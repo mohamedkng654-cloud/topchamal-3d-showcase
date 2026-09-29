@@ -19,14 +19,14 @@ const categoryName=(id:string)=>categories.find(c=>c.id===id)?.label || 'أجه�
 const META='اكتشف آلات القهوة، الخلاطات، العجانات وأجهزة المنزل من Topchamal. تشكيلة مختارة بأسعار الدرهم المغربي.';
 export const Route = createFileRoute('/')({
  head:()=>({meta:[{title:'Topchamal | أجهزة منزلية لكل لحظة'},{name:'description',content:META},{property:'og:title',content:'Topchamal | أجهزة منزلية لكل لحظة'},{property:'og:description',content:META},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary_large_image'}]}),
- component: Home,
+ component: Storefront,
 });
 function ThreeView({kind='coffee',interactive=true}:{kind?:ApplianceKind;interactive?:boolean}) {
  const [ready,setReady]=useState(false);
  useEffect(()=>{const observer=new IntersectionObserver(([entry])=>{if(entry?.isIntersecting){setReady(true);observer.disconnect()}},{rootMargin:'220px'});const node=document.getElementById(interactive?'hero-canvas':'feature-canvas');if(node)observer.observe(node);return()=>observer.disconnect()},[interactive]);
  return <div id={interactive?'hero-canvas':'feature-canvas'} className={interactive?'hero-scene':'showcase-visual'}><div className="hero-fallback"/>{ready&&<Suspense fallback={null}><Scene kind={kind} interactive={interactive}/></Suspense>}</div>
 }
-function Home(){
+export function Storefront(){
  const [active,setActive]=useState('all');const [feature,setFeature]=useState(0);const [cart,setCart]=useState<CartLine[]>([]);const [drawer,setDrawer]=useState(false);const [checkout,setCheckout]=useState(false);const [menu,setMenu]=useState(false);const [loaded,setLoaded]=useState(false);const [percent,setPercent]=useState(0);const [now,setNow]=useState(0);
  const productRef=useRef<HTMLElement>(null);
  useEffect(()=>{try{const value=JSON.parse(localStorage.getItem('topchamal-cart')||'[]');if(Array.isArray(value))setCart(value.filter((v:CartLine)=>v&&typeof v.id==='string'&&Number.isInteger(v.quantity)&&v.quantity>0))}catch{} setLoaded(true);const t=setInterval(()=>setNow(Date.now()),1000);setNow(Date.now());return()=>clearInterval(t)},[]);

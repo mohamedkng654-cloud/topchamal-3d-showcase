@@ -1,29 +1,32 @@
-# Welcome to your Lovable project
+# Topchamal — 3D showroom
 
-This project was built with [Lovable](https://lovable.dev).
+Arabic-first appliance storefront with procedural 3D models, real product photos, and a local cart. No backend or YouCan runtime is required.
 
-## Build with Lovable
+## Run the preview
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+```bash
+bun install
+bun run dev
 ```
 
-## Built with
+## Build for any static host
 
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+```bash
+bun run build:static
+```
+
+Upload the contents of `dist-static/` to any static hosting service. The generated `index.html` includes a readable HTML product catalog for search engines and works with JavaScript disabled. The interactive storefront hydrates in the browser.
+
+## Edit products
+
+Edit `src/data/products.json`. Each product contains `id`, `name`, `category`, `price`, `oldPrice`, `image`, `description`, and `source`. Product and category photographs from the public Topchamal website have been downloaded into independent CDN-hosted assets tracked in `src/assets/catalog/`; the live storefront does not fetch images from YouCan. Display prices were captured on 29 September 2026 and should be confirmed before taking orders.
+
+## WhatsApp destination
+
+The public Topchamal site did not provide a phone number. As shipped, checkout opens a pre-filled WhatsApp share dialog so the customer can select the store contact manually; this does not automatically send an order. Once the store's confirmed WhatsApp number is known, change the URL in `src/routes/index.tsx` from `https://api.whatsapp.com/send?text=` to `https://wa.me/212XXXXXXXXX?text=`. Do not publish a fabricated phone number.
+
+The countdown is a rolling presentation timer, not a verified sale deadline. Confirm promotions and policies with the store before publishing. Footer policy links currently point to source-site paths for verification and may require replacement with local policy pages.
+
+## 3D assets
+
+Appliances are assembled procedurally in `src/components/Showroom3D.tsx`. For optional GLB assets later, place the file in public storage and load it with Drei's `useGLTF` inside a Suspense boundary in the scene.
