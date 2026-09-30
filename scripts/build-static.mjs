@@ -7,3 +7,4 @@ writeFileSync('static-app/index.html',readFileSync('static-app/shell.html','utf8
 execFileSync('bun',['x','vite','build','--config','static.vite.config.ts'],{stdio:'inherit'});
 copyFileSync('public/sitemap.xml','dist-static/sitemap.xml');
 copyFileSync('public/robots.txt','dist-static/robots.txt');
+copyFileSync('public/favicon.png','dist-static/favicon.png');
