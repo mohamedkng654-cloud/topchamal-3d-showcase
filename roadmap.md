@@ -1,0 +1,4 @@
+- [ ] Repair storefront errors and verify preview.
+- [ ] Integrate supplied Topchamal logo and favicon.
+- [ ] Polish motion across hero, scroll, cards, buttons, navigation, and interactions without redesign.
+- [ ] Verify mobile/desktop and static export behavior.
