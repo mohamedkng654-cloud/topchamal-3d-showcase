@@ -1,4 +1,5 @@
 - [x] Repair storefront errors and verify preview.
 - [x] Integrate supplied Topchamal logo and favicon.
 - [x] Polish motion across hero, scroll, cards, buttons, navigation, and interactions without redesign.
-- [x] Verify mobile/desktop interactions; static export configured but build verification is pending.
+- [x] Verify mobile/desktop interactions.
+- [ ] Static export build verification — not run in this preview turn.
