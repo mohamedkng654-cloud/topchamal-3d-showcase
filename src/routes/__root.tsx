@@ -8,8 +8,10 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { type ReactNode } from "react";
-
 import appCss from "../styles.css?url";
+
+const siteUrl = "https://topchamal.ma";
+const googleSiteVerification = import.meta.env.VITE_GOOGLE_SITE_VERIFICATION as string | undefined;
 
 function NotFoundComponent() {
   return (
@@ -79,7 +81,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "Topchamal" },
       { property: "og:description", content: "تشكيلة Topchamal من الأجهزة المنزلية في المغرب." },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: siteUrl },
+      { property: "og:site_name", content: "Topchamal" },
       { name: "twitter:card", content: "summary_large_image" },
+      ...(googleSiteVerification
+        ? [{ name: "google-site-verification", content: googleSiteVerification }]
+        : []),
     ],
     links: [
       {
@@ -87,6 +94,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "canonical", href: siteUrl },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
