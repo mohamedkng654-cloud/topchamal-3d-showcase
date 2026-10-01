@@ -11,7 +11,8 @@ import { type ReactNode } from "react";
 import appCss from "../styles.css?url";
 
 const siteUrl = "https://topchamal.ma";
-const googleSiteVerification = import.meta.env.VITE_GOOGLE_SITE_VERIFICATION as string | undefined;
+const googleSiteVerification =
+  (import.meta.env.VITE_GOOGLE_SITE_VERIFICATION as string | undefined) || "google349eb3537ba0f8c5";
 
 function NotFoundComponent() {
   return (
