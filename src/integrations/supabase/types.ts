@@ -287,6 +287,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_public_order: { Args: { payload: Json }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
