@@ -3,6 +3,7 @@ import { AlertCircle, ArrowLeft, LockKeyhole, Mail, ShieldCheck } from "lucide-r
 import { useState } from "react";
 import { signInAdmin } from "@/lib/admin-auth";
 import { supabaseConfigured } from "@/lib/supabase";
+import { getLocalAdmin } from "@/lib/local-admin";
 
 export const Route = createFileRoute("/admin/login")({ component: AdminLogin });
 
@@ -35,10 +36,10 @@ function AdminLogin() {
         <span className="admin-eyebrow">TOPCHAMAL ADMIN</span>
         <h1>مرحباً بعودتك</h1>
         <p>سجّل الدخول لإدارة متجرك ومتابعة طلباتك.</p>
-        {!supabaseConfigured && (
+        {!supabaseConfigured && !getLocalAdmin() && (
           <div className="login-alert">
             <AlertCircle size={17} />
-            <span>فعّل Supabase لهذا التطبيق ثم أعد نشره لتفعيل تسجيل الدخول.</span>
+            <span>تسجيل دخول محلي بدون Supabase — استخدم بيانات المدير المحددة للمشروع.</span>
           </div>
         )}
         {error && (

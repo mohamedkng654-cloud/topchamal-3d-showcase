@@ -15,13 +15,14 @@ import {
   Users,
 } from "lucide-react";
 import { getAdminProfile, signOutAdmin } from "@/lib/admin-auth";
+import { getLocalAdmin } from "@/lib/local-admin";
 import { supabase, supabaseConfigured, type AdminProfile } from "@/lib/supabase";
 import "../styles/admin.css";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
   beforeLoad: async ({ location }) => {
-    if (!supabaseConfigured) {
+    if (!supabaseConfigured && !getLocalAdmin()) {
       if (location.pathname !== "/admin/login") throw redirect({ to: "/admin/login" });
       return { admin: null };
     }
