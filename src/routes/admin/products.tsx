@@ -133,6 +133,8 @@ function AdminProducts() {
   const [catalogName, setCatalogName] = useState("");
   const [catalogSlug, setCatalogSlug] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [copilot, setCopilot] = useState({ name: "", brand: "", category_id: "", price: "", stock: "0", notes: "" });
+  const [copilotLoading, setCopilotLoading] = useState(false);
 
   async function loadData() {
     setLoading(true);
@@ -369,6 +371,20 @@ function AdminProducts() {
     }
   }
 
+  async function buildCopilotDraft() {
+    if (!copilot.name.trim()) { setError("المساعد يحتاج اسم المنتج أولاً."); return; }
+    setCopilotLoading(true); setError("");
+    const category = categories.find((item) => item.id === copilot.category_id);
+    try {
+      const suggestion = await generateProductMetadata({ data: { name: copilot.name, brand: copilot.brand, category: category?.name || "", existingDescription: copilot.notes, language: aiSettings.language, tone: aiSettings.tone, descriptionLength: aiSettings.descriptionLength, tagCount: aiSettings.tagCount } });
+      setForm({ ...emptyForm, name: copilot.name.trim(), slug: suggestion.slug, brand: copilot.brand.trim(), category_id: copilot.category_id, price_mad: copilot.price, stock: copilot.stock || "0", description: suggestion.description, tags: suggestion.tags.join(", ") });
+      setNotice("جهّز المساعد مسودة المنتج. راجعها ثم احفظها.");
+    } catch {
+      setForm({ ...emptyForm, name: copilot.name.trim(), slug: slugify(copilot.name), brand: copilot.brand.trim(), category_id: copilot.category_id, price_mad: copilot.price, stock: copilot.stock || "0", description: copilot.notes || guessDescription(copilot.name), tags: category?.name || "" });
+      setNotice("تم تجهيز المسودة. أضف مفتاح OpenAI لتوليد وصف ووسوم أكثر تفصيلاً.");
+    } finally { setCopilotLoading(false); }
+  }
+
   async function saveBulkProducts() {
     const rows = bulkRows.filter((row) => row.name.trim());
     if (!rows.length) {
@@ -488,6 +504,20 @@ function AdminProducts() {
       <section className="dashboard-panel ai-settings-panel">
         <div className="panel-heading"><div><span className="admin-eyebrow">إعدادات المساعد</span><h3>تخصيص التوليد بالذكاء الاصطناعي</h3><p className="admin-panel-help">هذه الإعدادات تُحفظ لهذا المتصفح وتُستخدم في الإضافة الفردية والجماعية.</p></div><button type="button" className="admin-secondary-button" onClick={() => setSettingsOpen((open) => !open)}><Sparkles size={15} /> {settingsOpen ? "إخفاء الإعدادات" : "فتح الإعدادات"}</button></div>
         {settingsOpen && <div className="ai-settings-grid"><label><span>لغة الوصف والوسوم</span><select value={aiSettings.language} onChange={(event) => updateAISettings("language", event.target.value as AISettings["language"])}>{(Object.keys(languageLabels) as AISettings["language"][]).map((language) => <option key={language} value={language}>{languageLabels[language]}</option>)}</select></label><label><span>نبرة الكتابة</span><select value={aiSettings.tone} onChange={(event) => updateAISettings("tone", event.target.value as AISettings["tone"])}>{(Object.keys(toneLabels) as AISettings["tone"][]).map((tone) => <option key={tone} value={tone}>{toneLabels[tone]}</option>)}</select></label><label><span>طول الوصف</span><select value={aiSettings.descriptionLength} onChange={(event) => updateAISettings("descriptionLength", event.target.value as AISettings["descriptionLength"])}>{(Object.keys(lengthLabels) as AISettings["descriptionLength"][]).map((length) => <option key={length} value={length}>{lengthLabels[length]}</option>)}</select></label><label><span>عدد الوسوم</span><select value={aiSettings.tagCount} onChange={(event) => updateAISettings("tagCount", Number(event.target.value))}>{[5, 6, 8, 10, 12].map((count) => <option key={count} value={count}>{count} وسوم</option>)}</select></label><div className="ai-settings-summary"><Sparkles size={15} /> {languageLabels[aiSettings.language]} · {toneLabels[aiSettings.tone]} · {lengthLabels[aiSettings.descriptionLength]} · {aiSettings.tagCount} وسوم</div><button type="button" className="admin-primary-button" onClick={saveAISettings}>حفظ الإعدادات</button></div>}
+      </section>
+
+      <section className="dashboard-panel product-copilot-panel">
+        <div className="panel-heading"><div><span className="admin-eyebrow">مساعد الإضافة</span><h3>اسألني عن المنتج وسأجهز لك مسودة</h3><p className="admin-panel-help">أجب عن الأسئلة الأساسية فقط؛ سيكمل المساعد الرابط والوصف والوسوم، ثم يمكنك تعديل كل شيء قبل النشر.</p></div><Sparkles size={22} color="#c27b42" /></div>
+        <div className="copilot-chat"><div className="copilot-message">ما اسم المنتج؟ وما العلامة التجارية والتصنيف والسعر والمخزون؟ يمكنك إضافة ملاحظات قصيرة وسأرتب المعلومات لك.</div></div>
+        <div className="admin-form-grid copilot-grid">
+          <label><span>اسم المنتج *</span><input value={copilot.name} onChange={(event) => setCopilot((current) => ({ ...current, name: event.target.value }))} placeholder="مثلاً: Blender Moulinex" /></label>
+          <label><span>العلامة التجارية</span><input value={copilot.brand} onChange={(event) => setCopilot((current) => ({ ...current, brand: event.target.value }))} placeholder="Moulinex" /></label>
+          <label><span>التصنيف</span><select value={copilot.category_id} onChange={(event) => setCopilot((current) => ({ ...current, category_id: event.target.value }))}><option value="">بدون تصنيف</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+          <label><span>السعر</span><input dir="ltr" type="number" min="0" value={copilot.price} onChange={(event) => setCopilot((current) => ({ ...current, price: event.target.value }))} placeholder="اتركه فارغاً لمسودة" /></label>
+          <label><span>المخزون</span><input dir="ltr" type="number" min="0" value={copilot.stock} onChange={(event) => setCopilot((current) => ({ ...current, stock: event.target.value }))} /></label>
+          <label className="admin-form-wide"><span>معلومات إضافية أو وصف أولي</span><textarea value={copilot.notes} onChange={(event) => setCopilot((current) => ({ ...current, notes: event.target.value }))} placeholder="اللون، السعة، أو أي معلومة تريد تضمينها..." /></label>
+        </div>
+        <div className="admin-form-actions"><button type="button" className="admin-primary-button" onClick={() => void buildCopilotDraft()} disabled={copilotLoading}><Sparkles size={16} /> {copilotLoading ? "المساعد يجهز المسودة..." : "جهّز لي مسودة المنتج"}</button><button type="button" className="admin-secondary-button" onClick={() => { setCopilot({ name: "", brand: "", category_id: "", price: "", stock: "0", notes: "" }); setForm(emptyForm); }}>مسح المحادثة</button></div>
       </section>
 
       <section className="dashboard-panel catalog-manager-panel">
