@@ -29,7 +29,7 @@ import {
   loadStorefrontProducts,
   type StorefrontProduct,
 } from "@/lib/storefront";
-import brandLogo from "../assets/brand/topchamal-logo.png.asset.json";
+const brandLogo = "/topchamal-logo.jpg";
 
 gsap.registerPlugin(ScrollTrigger);
 const Scene = lazy(() =>
@@ -41,7 +41,7 @@ const fallbackProducts = catalog.products as Product[];
 const formatPrice = (n: number) =>
   new Intl.NumberFormat("fr-MA", { maximumFractionDigits: 2 }).format(n);
 const categoryName = (id: string) => categories.find((c) => c.id === id)?.label || "أجهزة منزلية";
-const WHATSAPP_NUMBER = "212716313000";
+const WHATSAPP_NUMBER = "212655190854";
 const META =
   "اكتشف آلات القهوة، الخلاطات، العجانات وأجهزة المنزل من Topchamal. تشكيلة مختارة بأسعار الدرهم المغربي.";
 export const Route = createFileRoute("/")({
@@ -306,7 +306,7 @@ export function Storefront() {
       {loaded && percent < 100 && (
         <div role="status" aria-label="جاري تحميل المعرض" className="loader">
           <div className="loader-mark">
-            <img src="/topchamal-3d-logo.png" alt="TopChamal" />
+            <img src={brandLogo} alt="TopChamal Home Cookware" />
           </div>
           <span className="num">{percent}%</span>
           <span className="latin">TOPCHAMAL</span>
@@ -315,7 +315,7 @@ export function Storefront() {
       <header className={`site-header ${scrolled ? "is-scrolled" : ""}`}>
         <div className="wrap">
           <a className="brand brand-image" href="/" aria-label="Topchamal">
-            <img src={brandLogo.url} width="94" height="68" alt="Topchamal Home Cookware" />
+            <img src={brandLogo} width="94" height="68" alt="Topchamal Home Cookware" />
           </a>
           <nav className="desktop-nav" aria-label="القائمة الرئيسية">
             <a href="#home">الرئيسية</a>
