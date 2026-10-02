@@ -58,7 +58,7 @@ export const Route = createFileRoute("/")({
   component: Storefront,
 });
 function ThreeView({
-  kind = "coffee",
+  kind = "logo",
   interactive = true,
 }: {
   kind?: ApplianceKind;
