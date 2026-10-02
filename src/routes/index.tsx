@@ -242,6 +242,17 @@ export function Storefront() {
       return;
     }
     setOrderSubmitting(true);
+    const lines = cart
+      .map((line) => {
+        const product = products.find((item) => item.id === line.id);
+        return product
+          ? `• ${product.name} × ${line.quantity} — ${formatPrice(product.price * line.quantity)} د.م`
+          : "";
+      })
+      .filter(Boolean);
+    const localOrderNumber = `TC-${Date.now().toString(36).toUpperCase()}`;
+    let orderNumber = localOrderNumber;
+    let orderTotal = total;
     try {
       const result = await createStorefrontOrder({
         name,
@@ -249,27 +260,38 @@ export function Storefront() {
         city,
         lines: cart.map((line) => ({ slug: line.id, quantity: line.quantity })),
       });
-      const lines = cart
-        .map((line) => {
-          const product = products.find((item) => item.id === line.id);
-          return product
-            ? `• ${product.name} × ${line.quantity} — ${formatPrice(product.price * line.quantity)} د.م`
-            : "";
-        })
-        .filter(Boolean);
-      const text = `طلب جديد من Topchamal\nرقم الطلب: ${result.order_number}\n\n${lines.join("\n")}\n\nالمجموع: ${formatPrice(Number(result.total_mad))} د.م\nالاسم: ${name}\nالهاتف: ${phone}\nالمدينة: ${city}\nطريقة الدفع: عند الاستلام`;
-      window.open(
-        `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`,
-        "_blank",
-        "noopener,noreferrer",
-      );
+      orderNumber = result.order_number;
+      orderTotal = Number(result.total_mad);
+    } catch {
+      // The storefront must remain usable when no backend has been configured.
+      try {
+        const saved = JSON.parse(localStorage.getItem("topchamal-local-orders") || "[]");
+        const orders = Array.isArray(saved) ? saved : [];
+        orders.push({
+          orderNumber,
+          name,
+          phone,
+          city,
+          total: orderTotal,
+          createdAt: new Date().toISOString(),
+        });
+        localStorage.setItem("topchamal-local-orders", JSON.stringify(orders.slice(-50)));
+      } catch {
+        // Local storage can be unavailable in private browsing; WhatsApp still works.
+      }
+    }
+    const text = `طلب جديد من Topchamal\nرقم الطلب: ${orderNumber}\n\n${lines.join("\n")}\n\nالمجموع: ${formatPrice(orderTotal)} د.م\nالاسم: ${name}\nالهاتف: ${phone}\nالمدينة: ${city}\nطريقة الدفع: عند الاستلام`;
+    const popup = window.open(
+      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+    if (!popup) setOrderError("اسمح بفتح النوافذ المنبثقة لإرسال الطلب عبر واتساب.");
+    else {
       setCart([]);
       setCheckout(false);
-    } catch (error) {
-      setOrderError(error instanceof Error ? error.message : "تعذر حفظ الطلب. حاول مرة أخرى.");
-    } finally {
-      setOrderSubmitting(false);
     }
+    setOrderSubmitting(false);
   }
 
   const daysLeft = now
@@ -750,9 +772,7 @@ export function Storefront() {
             <div className="drawer-body">
               {checkout ? (
                 <form id="checkout-form" className="checkout-form" onSubmit={order}>
-                  <p className="fine">
-                    الدفع عند الاستلام · سيتم حفظ الطلب في النظام ثم فتح واتساب
-                  </p>
+                  <p className="fine">الدفع عند الاستلام · سيتم تجهيز الطلب ثم فتح واتساب</p>
                   {orderError && (
                     <p className="checkout-error" role="alert">
                       {orderError}
