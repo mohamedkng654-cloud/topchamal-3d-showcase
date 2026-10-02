@@ -28,6 +28,7 @@ import {
   loadStorefrontProducts,
   type StorefrontProduct,
 } from "@/lib/storefront";
+import { getLocalSiteSettings } from "@/lib/local-store";
 const brandLogo = "/topchamal-logo.jpg";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -37,7 +38,6 @@ const fallbackProducts = catalog.products as Product[];
 const formatPrice = (n: number) =>
   new Intl.NumberFormat("fr-MA", { maximumFractionDigits: 2 }).format(n);
 const categoryName = (id: string) => categories.find((c) => c.id === id)?.label || "أجهزة منزلية";
-const WHATSAPP_NUMBER = "212716313000";
 const META =
   "اكتشف آلات القهوة، الخلاطات، العجانات وأجهزة المنزل من Topchamal. تشكيلة مختارة بأسعار الدرهم المغربي.";
 export const Route = createFileRoute("/")({
@@ -70,6 +70,7 @@ function PictureView({
   );
 }
 export function Storefront() {
+  const siteSettings = getLocalSiteSettings();
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
   const [scrolled, setScrolled] = useState(false);
   const [orderError, setOrderError] = useState("");
@@ -259,7 +260,7 @@ export function Storefront() {
     }
     const text = `طلب جديد من Topchamal\nرقم الطلب: ${orderNumber}\n\n${lines.join("\n")}\n\nالمجموع: ${formatPrice(orderTotal)} د.م\nالاسم: ${name}\nالهاتف: ${phone}\nالمدينة: ${city}\nطريقة الدفع: عند الاستلام`;
     const popup = window.open(
-      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`,
+      `https://wa.me/${siteSettings.whatsapp}?text=${encodeURIComponent(text)}`,
       "_blank",
       "noopener,noreferrer",
     );
@@ -344,17 +345,15 @@ export function Storefront() {
       <section className="hero" id="home">
         <PictureView src={brandLogo} alt="Topchamal" />
         <div className="wrap hero-inner">
-          <div className="hero-kicker">تفاصيل تصنع الفرق</div>
+          <div className="hero-kicker">{siteSettings.heroKicker}</div>
           <h1>
-            <span className="hero-word">لكل بيت</span>
-            <br />
-            <span className="hero-word">حكاية تبدأ</span>
+            <span className="hero-word">{siteSettings.heroTitle}</span>
             <br />
             <span className="hero-word">
-              <em>من هنا.</em>
+              <em>{siteSettings.heroTitleAccent}</em>
             </span>
           </h1>
-          <p>اكتشف أجهزة منزلية مختارة بعناية، لتجعل كل لحظة في مطبخك تجربة تستحق أن تعيشها.</p>
+          <p>{siteSettings.heroDescription}</p>
           <div className="hero-buttons">
             <Button
               className="btn"
@@ -574,8 +573,8 @@ export function Storefront() {
         <div className="wrap">
           <div>
             <span className="eyebrow">LIMITED EDITION · TOPCHAMAL</span>
-            <h2>عروض تستحق الاكتشاف.</h2>
-            <p>تصفح التخفيضات المتوفرة الآن في تشكيلة المتجر.</p>
+            <h2>{siteSettings.promoTitle}</h2>
+            <p>{siteSettings.promoDescription}</p>
             <Button
               className="btn"
               onClick={() => {
@@ -607,7 +606,7 @@ export function Storefront() {
       <section className="section" id="about">
         <div className="wrap">
           <span className="eyebrow">THE TOPCHAMAL PROMISE</span>
-          <h2 className="section-heading">راحة البال مع كل طلب</h2>
+          <h2 className="section-heading">{siteSettings.aboutTitle}</h2>
           <div className="trust-grid">
             <div className="trust-item reveal">
               <Truck size={36} />
@@ -664,7 +663,7 @@ export function Storefront() {
                 top<span>chamal</span>
                 <span className="brand-dot">.</span>
               </a>
-              <p>تفاصيل صغيرة تصنع بيتاً تحب العودة إليه. أجهزة منزلية مختارة لكل يوم.</p>
+              <p>{siteSettings.footerDescription}</p>
             </div>
             <div>
               <h4>اكتشف</h4>
@@ -709,7 +708,7 @@ export function Storefront() {
         onClick={() =>
           window.open(
             "https://wa.me/" +
-              WHATSAPP_NUMBER +
+              siteSettings.whatsapp +
               "?text=" +
               encodeURIComponent("مرحباً، أريد الاستفسار عن منتجات Topchamal"),
             "_blank",

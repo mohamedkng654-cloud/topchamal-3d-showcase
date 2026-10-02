@@ -35,8 +35,9 @@ export const Route = createFileRoute("/admin")({
 
 const navigation = [
   { label: "نظرة عامة", to: "/admin", icon: LayoutDashboard },
-  { label: "الطلبات", to: "/admin/orders", icon: ShoppingCart },
-  { label: "المنتجات", to: "/admin/products", icon: Package },
+  { label: "الكتالوج والمنتجات", to: "/admin/products", icon: Package },
+  { label: "الطلبات والعملاء", to: "/admin/orders", icon: ShoppingCart },
+  { label: "محتوى الموقع", to: "/admin/site", icon: Store },
 ] as const;
 
 function AdminLayout() {
