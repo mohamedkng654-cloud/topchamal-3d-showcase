@@ -23,7 +23,6 @@ import Lenis from "lenis";
 import { Button } from "@/components/ui/button";
 import catalog from "../data/products.json";
 import { categories } from "../data/categories";
-import type { ApplianceKind } from "../components/Showroom3D";
 import {
   createStorefrontOrder,
   loadStorefrontProducts,
@@ -32,9 +31,6 @@ import {
 const brandLogo = "/topchamal-logo.jpg";
 
 gsap.registerPlugin(ScrollTrigger);
-const Scene = lazy(() =>
-  import("../components/Showroom3D").then((m) => ({ default: m.Showroom3D })),
-);
 type Product = StorefrontProduct;
 type CartLine = { id: string; quantity: number };
 const fallbackProducts = catalog.products as Product[];
@@ -57,39 +53,19 @@ export const Route = createFileRoute("/")({
   }),
   component: Storefront,
 });
-function ThreeView({
-  kind = "logo",
+function PictureView({
+  src,
+  alt,
   interactive = true,
 }: {
-  kind?: ApplianceKind;
+  src: string;
+  alt: string;
   interactive?: boolean;
 }) {
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setReady(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "220px" },
-    );
-    const node = document.getElementById(interactive ? "hero-canvas" : "feature-canvas");
-    if (node) observer.observe(node);
-    return () => observer.disconnect();
-  }, [interactive]);
   return (
-    <div
-      id={interactive ? "hero-canvas" : "feature-canvas"}
-      className={interactive ? "hero-scene" : "showcase-visual"}
-    >
+    <div className={interactive ? "hero-scene picture-scene" : "showcase-visual picture-scene"}>
       <div className="hero-fallback" />
-      {ready && (
-        <Suspense fallback={null}>
-          <Scene kind={kind} interactive={interactive} />
-        </Suspense>
-      )}
+      <img key={src} src={src} alt={alt} className="scene-picture" loading={interactive ? "eager" : "lazy"} />
     </div>
   );
 }
@@ -366,7 +342,7 @@ export function Storefront() {
         )}
       </header>
       <section className="hero" id="home">
-        <ThreeView />
+        <PictureView src={(featured[0] ?? products[0])?.image || brandLogo} alt="Topchamal" />
         <div className="wrap hero-inner">
           <div className="hero-kicker">تفاصيل تصنع الفرق</div>
           <h1>
@@ -475,10 +451,7 @@ export function Storefront() {
       {featuredProduct && (
         <section className="section showcase" id="featured">
           <div className="wrap showcase-grid">
-            <ThreeView
-              kind={categories.find((c) => c.id === featuredProduct.category)?.kind || "coffee"}
-              interactive={false}
-            />
+            <PictureView src={featuredProduct.image} alt={featuredProduct.name} interactive={false} />
             <div className="showcase-details reveal">
               <span className="eyebrow">
                 IN THE SPOTLIGHT · {String((feature % featured.length) + 1).padStart(2, "0")}
