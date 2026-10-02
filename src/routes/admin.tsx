@@ -19,6 +19,7 @@ import { supabase, supabaseConfigured, type AdminProfile } from "@/lib/supabase"
 import "../styles/admin.css";
 
 export const Route = createFileRoute("/admin")({
+  ssr: false,
   beforeLoad: async ({ location }) => {
     if (!supabaseConfigured) {
       if (location.pathname !== "/admin/login") throw redirect({ to: "/admin/login" });
