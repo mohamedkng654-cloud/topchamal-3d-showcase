@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Archive, ClipboardPaste, Edit3, ImagePlus, PackageX, Plus, RefreshCw, Search, Sparkles, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseConfigured } from "@/lib/supabase";
+import { getLocalCategories, getLocalProducts, deleteLocalProduct, saveLocalProducts, upsertLocalProduct } from "@/lib/local-store";
 import { generateProductMetadata } from "@/lib/admin-ai.functions";
 
 export const Route = createFileRoute("/admin/products")({ component: AdminProducts });
@@ -132,6 +133,12 @@ function AdminProducts() {
   async function loadData() {
     setLoading(true);
     setError("");
+    if (!supabaseConfigured) {
+      setProducts(getLocalProducts() as Product[]);
+      setCategories(getLocalCategories());
+      setLoading(false);
+      return;
+    }
     const categoryPromise = supabase.from("categories").select("id,name,slug").eq("is_active", true).order("sort_order");
     const allProducts: Product[] = [];
     const pageSize = 1000;
@@ -184,6 +191,21 @@ function AdminProducts() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  function readImageFile(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("اختر ملف صورة صالحاً.");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setError("حجم الصورة يجب أن يكون أقل من 4 ميغابايت.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setForm((current) => ({ ...current, image_url: String(reader.result || "") }));
+    reader.readAsDataURL(file);
+  }
+
   async function saveProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -219,6 +241,15 @@ function AdminProducts() {
       is_featured: form.is_featured,
       tags: form.tags.split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 12),
     };
+    if (!supabaseConfigured) {
+      upsertLocalProduct({ ...payload, id: editingId || undefined, created_at: undefined });
+      setSaving(false);
+      setNotice(editingId ? "تم تحديث المنتج بنجاح." : "تمت إضافة المنتج بنجاح.");
+      if (!editingId) setForm(emptyForm);
+      setEditingId(null);
+      await loadData();
+      return;
+    }
     const result = editingId
       ? await supabase.from("products").update(payload).eq("id", editingId).select("*").single()
       : await supabase.from("products").insert(payload).select("*").single();
@@ -327,6 +358,15 @@ function AdminProducts() {
     }));
     const chunkSize = 100;
     const totalChunks = Math.ceil(payload.length / chunkSize);
+    if (!supabaseConfigured) {
+      payload.forEach((item) => upsertLocalProduct(item));
+      setBulkSaving(false);
+      setBulkProgress("");
+      setNotice(`${payload.length} منتج جاهز. المنتجات بدون سعر بقيت كمسودات حتى تكمل بياناتها.`);
+      setBulkRows(Array.from({ length: 5 }, emptyBulkRow));
+      await loadData();
+      return;
+    }
     for (let index = 0; index < payload.length; index += chunkSize) {
       const chunkNumber = Math.floor(index / chunkSize) + 1;
       setBulkProgress(`جار حفظ الدفعة ${chunkNumber} من ${totalChunks}...`);
@@ -347,12 +387,24 @@ function AdminProducts() {
   }
 
   async function setStock(product: Product, stock: number) {
+    if (!supabaseConfigured) {
+      upsertLocalProduct({ ...product, stock });
+      setNotice(stock === 0 ? "تم وضع المنتج خارج المخزون." : "تم تحديث المخزون.");
+      setProducts((current) => current.map((item) => item.id === product.id ? { ...item, stock } : item));
+      return;
+    }
     const result = await supabase.from("products").update({ stock }).eq("id", product.id);
     if (result.error) setError(result.error.message);
     else { setNotice(stock === 0 ? "تم وضع المنتج خارج المخزون." : "تم تحديث المخزون."); setProducts((current) => current.map((item) => item.id === product.id ? { ...item, stock } : item)); }
   }
 
   async function archiveProduct(product: Product) {
+    if (!supabaseConfigured) {
+      upsertLocalProduct({ ...product, status: "archived" });
+      setNotice("تم نقل المنتج إلى التخزين/الأرشيف.");
+      setProducts((current) => current.map((item) => item.id === product.id ? { ...item, status: "archived" } : item));
+      return;
+    }
     const result = await supabase.from("products").update({ status: "archived" }).eq("id", product.id);
     if (result.error) setError(result.error.message);
     else { setNotice("تم نقل المنتج إلى التخزين/الأرشيف."); setProducts((current) => current.map((item) => item.id === product.id ? { ...item, status: "archived" } : item)); }
@@ -361,6 +413,13 @@ function AdminProducts() {
   async function deleteProduct(product: Product) {
     if (!window.confirm(`حذف المنتج «${product.name}» نهائياً؟`)) return;
     setError("");
+    if (!supabaseConfigured) {
+      deleteLocalProduct(product.id);
+      setNotice("تم حذف المنتج.");
+      setProducts((current) => current.filter((item) => item.id !== product.id));
+      if (editingId === product.id) startCreate();
+      return;
+    }
     const result = await supabase.from("products").delete().eq("id", product.id);
     if (result.error) setError(result.error.message);
     else {
@@ -426,7 +485,7 @@ function AdminProducts() {
           <label><span>الحالة</span><select value={form.status} onChange={(event) => updateField("status", event.target.value as ProductStatus)}>{(Object.keys(statusLabels) as ProductStatus[]).map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select></label>
           <label className="admin-check-field"><input type="checkbox" checked={form.is_featured} onChange={(event) => updateField("is_featured", event.target.checked)} /><span>منتج مميز</span></label>
           <label className="admin-form-wide"><span>الوسوم (مفصولة بفواصل)</span><input value={form.tags} onChange={(event) => updateField("tags", event.target.value)} placeholder="خلاط، مطبخ، Moulinex" /></label>
-          <label className="admin-form-wide"><span>رابط الصورة</span><div className="admin-input-with-icon"><ImagePlus size={16} /><input dir="ltr" value={form.image_url} onChange={(event) => updateField("image_url", event.target.value)} placeholder="https://..." /></div></label>
+          <label className="admin-form-wide"><span>الصورة</span><div className="admin-input-with-icon"><ImagePlus size={16} /><input dir="ltr" value={form.image_url.startsWith("data:") ? "تم اختيار صورة محلية" : form.image_url} onChange={(event) => updateField("image_url", event.target.value)} placeholder="https://..." /></div><input type="file" accept="image/*" onChange={(event) => readImageFile(event.target.files?.[0])} /><small>يمكنك رفع صورة من الهاتف أو لصق رابط صورة.</small></label>
           <label className="admin-form-wide"><span>الوصف</span><textarea rows={3} value={form.description} onChange={(event) => updateField("description", event.target.value)} placeholder="وصف المنتج" /></label>
         </div>
         <div className="admin-form-actions"><button type="button" className="admin-secondary-button ai-button" onClick={() => void assistSingleProduct()} disabled={aiLoading}>{aiLoading ? "جار التوليد..." : <><Sparkles size={15} /> توليد الوصف والوسوم بالـ AI</>}</button><button type="submit" className="admin-primary-button" disabled={saving}>{saving ? "جار الحفظ..." : editingId ? "حفظ التعديلات" : "إضافة المنتج"}</button><button type="button" className="admin-secondary-button" onClick={startCreate}>مسح الحقول</button></div>

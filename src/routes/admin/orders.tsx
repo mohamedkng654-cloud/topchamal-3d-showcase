@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Edit3, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseConfigured } from "@/lib/supabase";
+import { deleteLocalOrder, getLocalOrders, saveLocalOrders, updateLocalOrder } from "@/lib/local-store";
 
 export const Route = createFileRoute("/admin/orders")({ component: AdminOrders });
 
@@ -57,6 +58,11 @@ function AdminOrders() {
   async function loadOrders() {
     setLoading(true);
     setError("");
+    if (!supabaseConfigured) {
+      setOrders(getLocalOrders() as Order[]);
+      setLoading(false);
+      return;
+    }
     const result = await supabase
       .from("orders")
       .select("id,order_number,customer_name,phone,email,address,city,total_mad,payment_method,status,created_at")
@@ -101,6 +107,14 @@ function AdminOrders() {
     if (!editing || !form) return;
     setSaving(true);
     setError("");
+    if (!supabaseConfigured) {
+      updateLocalOrder(editing.id, { ...form, customer_name: form.customer_name.trim(), phone: form.phone.trim(), email: form.email.trim() || null, address: form.address.trim() || null, city: form.city.trim() || null });
+      setSaving(false);
+      setNotice(`تم تحديث الطلب ${editing.order_number}.`);
+      closeEdit();
+      await loadOrders();
+      return;
+    }
     const result = await supabase.from("orders").update({ ...form, customer_name: form.customer_name.trim(), phone: form.phone.trim(), email: form.email.trim() || null, address: form.address.trim() || null, city: form.city.trim() || null }).eq("id", editing.id);
     setSaving(false);
     if (result.error) {
@@ -115,6 +129,12 @@ function AdminOrders() {
   async function deleteOrder(order: Order) {
     if (!window.confirm(`حذف الطلب ${order.order_number} وجميع تفاصيله؟`)) return;
     setError("");
+    if (!supabaseConfigured) {
+      deleteLocalOrder(order.id);
+      setNotice(`تم حذف الطلب ${order.order_number}.`);
+      setOrders((current) => current.filter((item) => item.id !== order.id));
+      return;
+    }
     const result = await supabase.from("orders").delete().eq("id", order.id);
     if (result.error) setError(result.error.message);
     else {

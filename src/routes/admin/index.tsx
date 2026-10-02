@@ -10,7 +10,8 @@ import {
   Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseConfigured } from "@/lib/supabase";
+import { getLocalOrders, getLocalProducts } from "@/lib/local-store";
 
 export const Route = createFileRoute("/admin/")({ component: AdminDashboard });
 
@@ -42,6 +43,21 @@ function AdminDashboard() {
     void loadMetrics();
   }, []);
   async function loadMetrics() {
+    if (!supabaseConfigured) {
+      const orders = getLocalOrders() as Array<{ total_mad?: number; status?: string }>;
+      const products = getLocalProducts();
+      setMetrics({
+        revenue: orders.filter((order) => order.status !== "cancelled").reduce((sum, order) => sum + Number(order.total_mad || 0), 0),
+        orders: orders.length,
+        pending: orders.filter((order) => ["new", "confirmed", "preparing"].includes(order.status || "")).length,
+        delivered: orders.filter((order) => order.status === "delivered").length,
+        customers: new Set(orders.map((order) => String(order.customer_name || ""))).size,
+        products: products.length,
+        lowStock: products.filter((product) => product.stock < 5 && product.status === "published").length,
+      });
+      setLoading(false);
+      return;
+    }
     const [{ data: orders }, { count: customers }, { count: products }, { count: lowStock }] =
       await Promise.all([
         supabase.from("orders").select("total_mad,status"),
