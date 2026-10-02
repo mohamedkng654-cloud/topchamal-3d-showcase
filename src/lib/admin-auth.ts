@@ -26,8 +26,11 @@ export async function getAdminProfile(): Promise<AdminProfile | null> {
 }
 
 export async function signInAdmin(email: string, password: string) {
-  const localAdmin = signInLocalAdmin(email, password);
+  const localAdmin = await signInLocalAdmin(email, password);
   if (localAdmin) return { data: { user: { id: localAdmin.user_id }, session: null }, error: null };
+  if (!supabaseConfigured) {
+    return { data: { user: null, session: null }, error: new Error("بيانات الدخول غير صحيحة.") };
+  }
 
   try {
     const result = await supabase.auth.signInWithPassword({ email, password });
