@@ -1,3 +1,6 @@
+// Lovable Cloud provides the managed backend credentials at deploy time.
+// This client uses Cloud's managed Supabase-compatible foundation; no external
+// Supabase project is required or connected by this application.
 export { supabase } from "@/integrations/supabase/client";
 
 export const supabaseConfigured = Boolean(

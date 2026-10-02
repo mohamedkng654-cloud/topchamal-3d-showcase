@@ -24,7 +24,7 @@ function AdminLogin() {
   }
 
   return (
-    <main className="admin-login-page" dir="rtl">
+            <main className="admin-login-page" dir="rtl">
       <div className="login-decoration">
         <span>TOPCHAMAL</span>
       </div>
@@ -38,9 +38,7 @@ function AdminLogin() {
         {!supabaseConfigured && (
           <div className="login-alert">
             <AlertCircle size={17} />
-            <span>
-              أضف قيم Supabase إلى ملف <code>.env</code> لتفعيل تسجيل الدخول.
-            </span>
+              <span>فعّل Lovable Cloud لهذا المشروع ثم أعد نشر التطبيق لتفعيل تسجيل الدخول.</span>
           </div>
         )}
         {error && (
