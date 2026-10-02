@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790948814363,
+      "tag": "0000_topchamal_admin_and_store",
+      "breakpoints": true
+    }
+  ]
 }
