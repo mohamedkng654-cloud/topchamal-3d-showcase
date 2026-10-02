@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Edit3, ImagePlus, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Archive, ClipboardPaste, Edit3, ImagePlus, PackageX, Plus, RefreshCw, Search, Sparkles, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -23,6 +23,15 @@ type Product = {
   is_featured: boolean;
   created_at: string;
 };
+type BulkRow = {
+  name: string;
+  price: string;
+  stock: string;
+  category: string;
+  status: ProductStatus;
+  slug: string;
+  description: string;
+};
 type ProductForm = {
   name: string;
   slug: string;
@@ -37,6 +46,10 @@ type ProductForm = {
   status: ProductStatus;
   is_featured: boolean;
 };
+
+const emptyBulkRow = (): BulkRow => ({ name: "", price: "", stock: "0", category: "", status: "draft", slug: "", description: "" });
+const slugify = (value: string) => value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const guessDescription = (name: string) => name.trim() ? `منتج ${name.trim()} من تشكيلة Topchamal.` : "";
 
 const emptyForm: ProductForm = {
   name: "",
@@ -87,6 +100,9 @@ function AdminProducts() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [bulkRows, setBulkRows] = useState<BulkRow[]>(() => Array.from({ length: 5 }, emptyBulkRow));
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkText, setBulkText] = useState("");
 
   async function loadData() {
     setLoading(true);
@@ -182,6 +198,84 @@ function AdminProducts() {
     await loadData();
   }
 
+  function updateBulkRow(index: number, field: keyof BulkRow, value: string) {
+    setBulkRows((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row));
+  }
+
+  function addBulkRows(count = 5) {
+    setBulkRows((current) => [...current, ...Array.from({ length: count }, emptyBulkRow)]);
+  }
+
+  function importBulkText() {
+    const lines = bulkText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const imported = lines.map((line) => {
+      const parts = line.includes("\t") ? line.split("\t") : line.split(",");
+      const [name = "", price = "", stock = "0", category = ""] = parts.map((part) => part.trim());
+      const matchedCategory = categories.find((item) => item.id === category || item.slug === category || item.name.toLowerCase() === category.toLowerCase());
+      return { ...emptyBulkRow(), name, price, stock: stock || "0", category: matchedCategory?.id || "" };
+    });
+    if (imported.length) {
+      setBulkRows(imported);
+      setBulkText("");
+      setNotice(`تم استيراد ${imported.length} صف. راجعها ثم احفظ.`);
+    }
+  }
+
+  function assistBulkRow(index: number) {
+    setBulkRows((current) => current.map((row, rowIndex) => {
+      if (rowIndex !== index) return row;
+      const name = row.name.trim();
+      const category = categories.find((item) => name.toLowerCase().includes(item.name.toLowerCase()) || name.toLowerCase().includes(item.slug.toLowerCase()));
+      return { ...row, slug: row.slug || slugify(name), description: row.description || guessDescription(name), category: row.category || category?.id || "" };
+    }));
+    setNotice("تمت مساعدة الصف تلقائياً. راجع الاقتراحات قبل الحفظ.");
+  }
+
+  async function saveBulkProducts() {
+    const rows = bulkRows.filter((row) => row.name.trim());
+    if (!rows.length) {
+      setError("أدخل اسم منتج واحد على الأقل في جدول الإضافة السريعة.");
+      return;
+    }
+    setBulkSaving(true);
+    setError("");
+    const payload = rows.map((row, index) => ({
+      name: row.name.trim(),
+      slug: slugify(row.slug || row.name) || `product-${Date.now()}-${index}`,
+      description: row.description.trim() || null,
+      price_mad: Number(row.price || 0),
+      discount_price_mad: null,
+      category_id: row.category || null,
+      image_urls: [],
+      stock: Math.max(0, Number(row.stock || 0)),
+      sku: null,
+      brand: null,
+      status: row.price.trim() ? row.status : "draft",
+      is_featured: false,
+    }));
+    const result = await supabase.from("products").insert(payload);
+    setBulkSaving(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setNotice(`${payload.length} منتج جاهز. المنتجات بدون سعر بقيت كمسودات حتى تكمل بياناتها.`);
+    setBulkRows(Array.from({ length: 5 }, emptyBulkRow));
+    await loadData();
+  }
+
+  async function setStock(product: Product, stock: number) {
+    const result = await supabase.from("products").update({ stock }).eq("id", product.id);
+    if (result.error) setError(result.error.message);
+    else { setNotice(stock === 0 ? "تم وضع المنتج خارج المخزون." : "تم تحديث المخزون."); setProducts((current) => current.map((item) => item.id === product.id ? { ...item, stock } : item)); }
+  }
+
+  async function archiveProduct(product: Product) {
+    const result = await supabase.from("products").update({ status: "archived" }).eq("id", product.id);
+    if (result.error) setError(result.error.message);
+    else { setNotice("تم نقل المنتج إلى التخزين/الأرشيف."); setProducts((current) => current.map((item) => item.id === product.id ? { ...item, status: "archived" } : item)); }
+  }
+
   async function deleteProduct(product: Product) {
     if (!window.confirm(`حذف المنتج «${product.name}» نهائياً؟`)) return;
     setError("");
@@ -214,6 +308,13 @@ function AdminProducts() {
 
       {(error || notice) && <div className={`admin-alert ${error ? "error" : "success"}`}>{error || notice}</div>}
 
+      <section className="dashboard-panel bulk-products-panel">
+        <div className="panel-heading"><div><span className="admin-eyebrow">إضافة سريعة</span><h3>أضف عدة منتجات مرة واحدة</h3><p className="admin-panel-help">يمكنك ترك السعر فارغاً؛ سيُحفظ المنتج كمسودة لتكمل معلوماته لاحقاً.</p></div><div className="bulk-panel-actions"><button type="button" className="admin-secondary-button" onClick={() => addBulkRows()}><Plus size={15} /> صفوف جديدة</button><button type="button" className="admin-primary-button" onClick={() => void saveBulkProducts()} disabled={bulkSaving}><ClipboardPaste size={15} /> {bulkSaving ? "جار الحفظ..." : "حفظ الكل"}</button></div></div>
+        <div className="bulk-import"><textarea value={bulkText} onChange={(event) => setBulkText(event.target.value)} placeholder="الصق من Excel أو Google Sheets: الاسم، السعر، المخزون، التصنيف (كل منتج في سطر)" /><button type="button" className="admin-secondary-button" onClick={importBulkText}>استيراد الصفوف</button></div>
+        <div className="admin-table-wrap bulk-table-wrap"><table className="admin-table bulk-table"><thead><tr><th>اسم المنتج *</th><th>السعر لاحقاً</th><th>المخزون</th><th>التصنيف</th><th>الحالة</th><th>مساعدة</th></tr></thead><tbody>{bulkRows.map((row, index) => <tr key={index}><td><input value={row.name} onChange={(event) => updateBulkRow(index, "name", event.target.value)} placeholder="مثلاً: خلاط Moulinex" /></td><td><input dir="ltr" type="number" min="0" value={row.price} onChange={(event) => updateBulkRow(index, "price", event.target.value)} placeholder="لاحقاً" /></td><td><input dir="ltr" type="number" min="0" step="1" value={row.stock} onChange={(event) => updateBulkRow(index, "stock", event.target.value)} /></td><td><select value={row.category} onChange={(event) => updateBulkRow(index, "category", event.target.value)}><option value="">بدون تصنيف</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></td><td><select value={row.status} onChange={(event) => updateBulkRow(index, "status", event.target.value)}><option value="draft">مسودة</option><option value="published">منشور</option><option value="archived">مؤرشف</option></select></td><td><button type="button" className="admin-action ai" onClick={() => assistBulkRow(index)} title="اقتراح الرابط والوصف والتصنيف"><Sparkles size={14} /> اقتراح</button></td></tr>)}</tbody></table></div>
+        <small className="admin-ai-note"><Sparkles size={13} /> المساعد يقترح الرابط والوصف والتصنيف من اسم المنتج، ويبقي كل شيء قابلاً للمراجعة قبل الحفظ.</small>
+      </section>
+
       <form className="dashboard-panel admin-form-panel" onSubmit={saveProduct}>
         <div className="panel-heading">
           <div>
@@ -245,7 +346,7 @@ function AdminProducts() {
 
       <div className="dashboard-panel admin-table-panel">
         <div className="admin-toolbar"><div><strong>كل المنتجات</strong><small>{filteredProducts.length} منتج</small></div><label className="admin-search"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث بالاسم أو SKU..." /></label></div>
-        {loading ? <p className="admin-state">جار تحميل المنتجات...</p> : filteredProducts.length === 0 ? <p className="admin-state">لا توجد منتجات مطابقة.</p> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>المنتج</th><th>السعر</th><th>المخزون</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>{filteredProducts.map((product) => <tr key={product.id}><td><strong>{product.name}</strong><small>{product.slug}{product.sku ? ` · ${product.sku}` : ""}</small></td><td>{money(product.discount_price_mad ?? product.price_mad)}{product.discount_price_mad != null && <small className="admin-strike">{money(product.price_mad)}</small>}</td><td><span className={product.stock < 5 ? "stock-low" : ""}>{product.stock}</span></td><td><span className={`status-pill ${product.status}`}>{statusLabels[product.status]}</span></td><td><div className="admin-row-actions"><button className="admin-action edit" onClick={() => startEdit(product)}><Edit3 size={14} /> تعديل</button><button className="admin-action delete" onClick={() => void deleteProduct(product)}><Trash2 size={14} /> حذف</button></div></td></tr>)}</tbody></table></div>}
+        {loading ? <p className="admin-state">جار تحميل المنتجات...</p> : filteredProducts.length === 0 ? <p className="admin-state">لا توجد منتجات مطابقة.</p> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>المنتج</th><th>السعر</th><th>المخزون</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>{filteredProducts.map((product) => <tr key={product.id}><td><strong>{product.name}</strong><small>{product.slug}{product.sku ? ` · ${product.sku}` : ""}</small></td><td>{money(product.discount_price_mad ?? product.price_mad)}{product.discount_price_mad != null && <small className="admin-strike">{money(product.price_mad)}</small>}</td><td><span className={product.stock < 5 ? "stock-low" : ""}>{product.stock}</span></td><td><span className={`status-pill ${product.status}`}>{statusLabels[product.status]}</span></td><td><div className="admin-row-actions"><button className="admin-action edit" onClick={() => startEdit(product)}><Edit3 size={14} /> تعديل</button><button className="admin-action stock" onClick={() => void setStock(product, product.stock === 0 ? 1 : 0)}><PackageX size={14} /> {product.stock === 0 ? "متوفر" : "نفد"}</button><button className="admin-action archive" onClick={() => void archiveProduct(product)} disabled={product.status === "archived"}><Archive size={14} /> تخزين</button><button className="admin-action delete" onClick={() => void deleteProduct(product)}><Trash2 size={14} /> حذف</button></div></td></tr>)}</tbody></table></div>}
       </div>
     </section>
   );
