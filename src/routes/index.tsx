@@ -41,6 +41,7 @@ const fallbackProducts = catalog.products as Product[];
 const formatPrice = (n: number) =>
   new Intl.NumberFormat("fr-MA", { maximumFractionDigits: 2 }).format(n);
 const categoryName = (id: string) => categories.find((c) => c.id === id)?.label || "أجهزة منزلية";
+const WHATSAPP_NUMBER = "212716313000";
 const META =
   "اكتشف آلات القهوة، الخلاطات، العجانات وأجهزة المنزل من Topchamal. تشكيلة مختارة بأسعار الدرهم المغربي.";
 export const Route = createFileRoute("/")({
@@ -731,10 +732,12 @@ export function Storefront() {
       </footer>
       <Button
         className="whatsapp-float"
-        aria-label="مشاركة عبر واتساب"
+        aria-label="التواصل مع TopChamal عبر واتساب"
         onClick={() =>
           window.open(
-            "https://api.whatsapp.com/send?text=" +
+            "https://wa.me/" +
+              WHATSAPP_NUMBER +
+              "?text=" +
               encodeURIComponent("مرحباً، أريد الاستفسار عن منتجات Topchamal"),
             "_blank",
             "noopener,noreferrer",
