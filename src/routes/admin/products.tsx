@@ -110,16 +110,26 @@ function AdminProducts() {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState("");
 
   async function loadData() {
     setLoading(true);
     setError("");
-    const [productResult, categoryResult] = await Promise.all([
-      supabase.from("products").select("*").order("created_at", { ascending: false }).limit(500),
-      supabase.from("categories").select("id,name,slug").eq("is_active", true).order("sort_order"),
-    ]);
-    if (productResult.error) setError(productResult.error.message);
-    setProducts((productResult.data as Product[]) || []);
+    const categoryPromise = supabase.from("categories").select("id,name,slug").eq("is_active", true).order("sort_order");
+    const allProducts: Product[] = [];
+    const pageSize = 1000;
+    let page = 0;
+    let productError: string | null = null;
+    while (true) {
+      const result = await supabase.from("products").select("*").order("created_at", { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1);
+      if (result.error) { productError = result.error.message; break; }
+      allProducts.push(...((result.data as Product[]) || []));
+      if (!result.data || result.data.length < pageSize) break;
+      page += 1;
+    }
+    const categoryResult = await categoryPromise;
+    if (productError) setError(productError);
+    setProducts(allProducts);
     setCategories((categoryResult.data as Category[]) || []);
     setLoading(false);
   }
@@ -288,12 +298,22 @@ function AdminProducts() {
       status: row.price.trim() ? row.status : "draft",
       is_featured: false,
     }));
-    const result = await supabase.from("products").insert(payload);
-    setBulkSaving(false);
-    if (result.error) {
-      setError(result.error.message);
-      return;
+    const chunkSize = 100;
+    const totalChunks = Math.ceil(payload.length / chunkSize);
+    for (let index = 0; index < payload.length; index += chunkSize) {
+      const chunkNumber = Math.floor(index / chunkSize) + 1;
+      setBulkProgress(`جار حفظ الدفعة ${chunkNumber} من ${totalChunks}...`);
+      const result = await supabase.from("products").insert(payload.slice(index, index + chunkSize));
+      if (result.error) {
+        setBulkSaving(false);
+        setBulkProgress("");
+        setError(`تم حفظ ${index} منتجاً قبل الخطأ: ${result.error.message}`);
+        await loadData();
+        return;
+      }
     }
+    setBulkSaving(false);
+    setBulkProgress("");
     setNotice(`${payload.length} منتج جاهز. المنتجات بدون سعر بقيت كمسودات حتى تكمل بياناتها.`);
     setBulkRows(Array.from({ length: 5 }, emptyBulkRow));
     await loadData();
@@ -344,9 +364,9 @@ function AdminProducts() {
       {(error || notice) && <div className={`admin-alert ${error ? "error" : "success"}`}>{error || notice}</div>}
 
       <section className="dashboard-panel bulk-products-panel">
-        <div className="panel-heading"><div><span className="admin-eyebrow">إضافة سريعة</span><h3>أضف عدة منتجات مرة واحدة</h3><p className="admin-panel-help">يمكنك ترك السعر فارغاً؛ سيُحفظ المنتج كمسودة لتكمل معلوماته لاحقاً.</p></div><div className="bulk-panel-actions"><button type="button" className="admin-secondary-button" onClick={() => addBulkRows()}><Plus size={15} /> صفوف جديدة</button><button type="button" className="admin-primary-button" onClick={() => void saveBulkProducts()} disabled={bulkSaving}><ClipboardPaste size={15} /> {bulkSaving ? "جار الحفظ..." : "حفظ الكل"}</button></div></div>
+        <div className="panel-heading"><div><span className="admin-eyebrow">إضافة سريعة</span><h3>أضف عدة منتجات مرة واحدة</h3><p className="admin-panel-help">يمكنك ترك السعر فارغاً؛ سيُحفظ المنتج كمسودة لتكمل معلوماته لاحقاً.</p></div><div className="bulk-panel-actions"><button type="button" className="admin-secondary-button" onClick={() => addBulkRows()}><Plus size={15} /> صفوف جديدة</button><button type="button" className="admin-primary-button" onClick={() => void saveBulkProducts()} disabled={bulkSaving}><ClipboardPaste size={15} /> {bulkProgress || (bulkSaving ? "جار الحفظ..." : "حفظ الكل")}</button></div></div>
         <div className="bulk-import"><textarea value={bulkText} onChange={(event) => setBulkText(event.target.value)} placeholder="الصق من Excel أو Google Sheets: الاسم، السعر، المخزون، التصنيف (كل منتج في سطر)" /><button type="button" className="admin-secondary-button" onClick={importBulkText}>استيراد الصفوف</button></div>
-        <div className="admin-table-wrap bulk-table-wrap"><table className="admin-table bulk-table"><thead><tr><th>اسم المنتج *</th><th>السعر لاحقاً</th><th>المخزون</th><th>التصنيف</th><th>الحالة</th><th>الوسوم</th><th>مساعدة</th></tr></thead><tbody>{bulkRows.map((row, index) => <tr key={index}><td><input value={row.name} onChange={(event) => updateBulkRow(index, "name", event.target.value)} placeholder="مثلاً: خلاط Moulinex" /></td><td><input dir="ltr" type="number" min="0" value={row.price} onChange={(event) => updateBulkRow(index, "price", event.target.value)} placeholder="لاحقاً" /></td><td><input dir="ltr" type="number" min="0" step="1" value={row.stock} onChange={(event) => updateBulkRow(index, "stock", event.target.value)} /></td><td><select value={row.category} onChange={(event) => updateBulkRow(index, "category", event.target.value)}><option value="">بدون تصنيف</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></td><td><select value={row.status} onChange={(event) => updateBulkRow(index, "status", event.target.value)}><option value="draft">مسودة</option><option value="published">منشور</option><option value="archived">مؤرشف</option></select></td><td><input value={row.tags} onChange={(event) => updateBulkRow(index, "tags", event.target.value)} placeholder="وسوم" /></td><td><button type="button" className="admin-action ai" onClick={() => assistBulkRow(index)} title="توليد الوصف والوسوم والرابط بواسطة OpenAI"><Sparkles size={14} /> اقتراح</button></td></tr>)}</tbody></table></div>
+        <div className="admin-table-wrap bulk-table-wrap"><table className="admin-table bulk-table" aria-label="إضافة منتجات بالجملة"><thead><tr><th>اسم المنتج *</th><th>السعر لاحقاً</th><th>المخزون</th><th>التصنيف</th><th>الحالة</th><th>الوسوم</th><th>مساعدة</th></tr></thead><tbody>{bulkRows.map((row, index) => <tr key={index}><td><input value={row.name} onChange={(event) => updateBulkRow(index, "name", event.target.value)} placeholder="مثلاً: خلاط Moulinex" /></td><td><input dir="ltr" type="number" min="0" value={row.price} onChange={(event) => updateBulkRow(index, "price", event.target.value)} placeholder="لاحقاً" /></td><td><input dir="ltr" type="number" min="0" step="1" value={row.stock} onChange={(event) => updateBulkRow(index, "stock", event.target.value)} /></td><td><select value={row.category} onChange={(event) => updateBulkRow(index, "category", event.target.value)}><option value="">بدون تصنيف</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></td><td><select value={row.status} onChange={(event) => updateBulkRow(index, "status", event.target.value)}><option value="draft">مسودة</option><option value="published">منشور</option><option value="archived">مؤرشف</option></select></td><td><input value={row.tags} onChange={(event) => updateBulkRow(index, "tags", event.target.value)} placeholder="وسوم" /></td><td><button type="button" className="admin-action ai" onClick={() => assistBulkRow(index)} title="توليد الوصف والوسوم والرابط بواسطة OpenAI"><Sparkles size={14} /> اقتراح</button></td></tr>)}</tbody></table></div>
         <small className="admin-ai-note"><Sparkles size={13} /> OpenAI يولّد الوصف والوسوم والرابط، وتبقى كل الاقتراحات قابلة للمراجعة قبل الحفظ.</small>
       </section>
 
