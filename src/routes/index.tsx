@@ -342,7 +342,7 @@ export function Storefront() {
         )}
       </header>
       <section className="hero" id="home">
-        <PictureView src={(featured[0] ?? products[0])?.image || brandLogo} alt="Topchamal" />
+        <PictureView src={brandLogo} alt="Topchamal" />
         <div className="wrap hero-inner">
           <div className="hero-kicker">تفاصيل تصنع الفرق</div>
           <h1>
