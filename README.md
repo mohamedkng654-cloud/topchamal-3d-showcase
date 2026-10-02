@@ -25,6 +25,8 @@ Edit `src/data/products.json`. Each product contains `id`, `name`, `category`, `
 
 The authenticated admin at `/admin/products` can use OpenAI to generate product descriptions, SEO slugs, and tags. Configure `OPENAI_API_KEY` as a **server-only deployment secret**; never use a `VITE_` variable for it. `OPENAI_MODEL` defaults to `gpt-5-mini` and can be changed to another model supported by the configured OpenAI-compatible endpoint. Apply `drizzle/migrations/0002_product_tags.sql` before saving generated tags.
 
+Apply all migrations, including `drizzle/migrations/0003_initial_admin_claim.sql`. After creating the first user in Supabase Authentication, that user becomes the initial store owner the first time they sign in at `/admin/login`; later users must be added to `public.admins` by an existing owner.
+
 ## WhatsApp destination
 
 The public Topchamal site did not provide a phone number. As shipped, checkout opens a pre-filled WhatsApp share dialog so the customer can select the store contact manually; this does not automatically send an order. Once the store's confirmed WhatsApp number is known, change the URL in `src/routes/index.tsx` from `https://api.whatsapp.com/send?text=` to `https://wa.me/212XXXXXXXXX?text=`. Do not publish a fabricated phone number.

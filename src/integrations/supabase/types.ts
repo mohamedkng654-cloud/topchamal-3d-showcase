@@ -291,6 +291,7 @@ export type Database = {
     }
     Functions: {
       create_public_order: { Args: { payload: Json }; Returns: Json }
+      claim_initial_admin: { Args: never; Returns: Database["public"]["Tables"]["admins"]["Row"] }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {

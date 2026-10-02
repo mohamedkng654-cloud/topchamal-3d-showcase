@@ -1,6 +1,8 @@
 export { supabase } from "@/integrations/supabase/client";
 
-export const supabaseConfigured = true;
+export const supabaseConfigured = Boolean(
+  import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+);
 
 export type AdminProfile = {
   user_id: string;
