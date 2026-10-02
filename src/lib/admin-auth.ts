@@ -1,9 +1,7 @@
 import { supabase, supabaseConfigured, type AdminProfile } from "./supabase";
-import { getLocalAdmin, signInLocalAdmin, signOutLocalAdmin } from "./local-admin";
 
 export async function getAdminProfile(): Promise<AdminProfile | null> {
-  const localAdmin = getLocalAdmin();
-  if (localAdmin) return localAdmin;
+  if (!supabaseConfigured) return null;
   try {
     const {
       data: { user },
@@ -26,10 +24,8 @@ export async function getAdminProfile(): Promise<AdminProfile | null> {
 }
 
 export async function signInAdmin(email: string, password: string) {
-  const localAdmin = await signInLocalAdmin(email, password);
-  if (localAdmin) return { data: { user: { id: localAdmin.user_id }, session: null }, error: null };
   if (!supabaseConfigured) {
-    return { data: { user: null, session: null }, error: new Error("بيانات الدخول غير صحيحة.") };
+    return { data: { user: null, session: null }, error: new Error("Supabase غير مفعّل لهذا التطبيق.") };
   }
 
   try {
@@ -55,7 +51,6 @@ export async function signInAdmin(email: string, password: string) {
 }
 
 export async function signOutAdmin() {
-  signOutLocalAdmin();
   if (!supabaseConfigured) return { error: null, data: { user: null, session: null } };
   return supabase.auth.signOut();
 }
