@@ -35,13 +35,6 @@ const navigation = [
   { label: "نظرة عامة", to: "/admin", icon: LayoutDashboard },
   { label: "الطلبات", to: "/admin/orders", icon: ShoppingCart },
   { label: "المنتجات", to: "/admin/products", icon: Package },
-  { label: "التصنيفات", to: "/admin/categories", icon: Boxes },
-  { label: "العملاء", to: "/admin/customers", icon: Users },
-  { label: "الكوبونات", to: "/admin/discounts", icon: Tag },
-  { label: "الصفحة الرئيسية", to: "/admin/homepage", icon: Home },
-  { label: "التحليلات", to: "/admin/analytics", icon: BarChart3 },
-  { label: "الإشعارات", to: "/admin/notifications", icon: Bell },
-  { label: "إعدادات المتجر", to: "/admin/settings", icon: Settings },
 ] as const;
 
 function AdminLayout() {
