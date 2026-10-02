@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
