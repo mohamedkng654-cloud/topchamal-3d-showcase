@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Archive, ClipboardPaste, Edit3, ImagePlus, PackageX, Plus, RefreshCw, Search, Sparkles, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
-import { getLocalCategories, getLocalProducts, deleteLocalProduct, saveLocalProducts, upsertLocalProduct } from "@/lib/local-store";
+import { getLocalCategories, getLocalProducts, deleteLocalProduct, upsertLocalProduct, upsertLocalCategory, deleteLocalCategory } from "@/lib/local-store";
 import { generateProductMetadata } from "@/lib/admin-ai.functions";
 
 export const Route = createFileRoute("/admin/products")({ component: AdminProducts });
@@ -35,6 +35,7 @@ type BulkRow = {
   slug: string;
   description: string;
   tags: string;
+  image_url: string;
 };
 type AISettings = {
   language: "ar" | "fr" | "en";
@@ -67,7 +68,7 @@ const languageLabels: Record<AISettings["language"], string> = { ar: "العرب
 const toneLabels: Record<AISettings["tone"], string> = { professional: "احترافي", friendly: "ودود", minimal: "مختصر" };
 const lengthLabels: Record<AISettings["descriptionLength"], string> = { short: "قصير (30-50 كلمة)", standard: "متوسط (60-90 كلمة)", long: "مفصل (100-140 كلمة)" };
 
-const emptyBulkRow = (): BulkRow => ({ name: "", price: "", stock: "0", category: "", status: "draft", slug: "", description: "", tags: "" });
+const emptyBulkRow = (): BulkRow => ({ name: "", price: "", stock: "0", category: "", status: "draft", slug: "", description: "", tags: "", image_url: "" });
 const slugify = (value: string) => value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const guessDescription = (name: string) => name.trim() ? `منتج ${name.trim()} من تشكيلة Topchamal.` : "";
 
@@ -129,6 +130,9 @@ function AdminProducts() {
   const [bulkProgress, setBulkProgress] = useState("");
   const [aiSettings, setAiSettings] = useState<AISettings>(readAISettings);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [catalogName, setCatalogName] = useState("");
+  const [catalogSlug, setCatalogSlug] = useState("");
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
 
   async function loadData() {
     setLoading(true);
@@ -204,6 +208,38 @@ function AdminProducts() {
     const reader = new FileReader();
     reader.onload = () => setForm((current) => ({ ...current, image_url: String(reader.result || "") }));
     reader.readAsDataURL(file);
+  }
+
+  function readBulkImageFile(index: number, file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith("image/") || file.size > 4 * 1024 * 1024) {
+      setError("كل صورة يجب أن تكون صالحة وأقل من 4 ميغابايت.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setBulkRows((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, image_url: String(reader.result || "") } : row));
+    reader.readAsDataURL(file);
+  }
+
+  function saveCatalog() {
+    const name = catalogName.trim();
+    const slug = slugify(catalogSlug || name);
+    if (!name || !slug) { setError("أدخل اسم الكتالوج."); return; }
+    if (supabaseConfigured) { setError("إدارة الكتالوجات متاحة حالياً في الوضع المحلي فقط."); return; }
+    upsertLocalCategory(name, slug, editingCategoryId || undefined);
+    setCategories(getLocalCategories());
+    setCatalogName(""); setCatalogSlug(""); setEditingCategoryId(null);
+    setNotice(editingCategoryId ? "تم تحديث الكتالوج." : "تمت إضافة الكتالوج.");
+  }
+
+  function editCatalog(category: Category) {
+    setEditingCategoryId(category.id); setCatalogName(category.name); setCatalogSlug(category.slug);
+  }
+
+  function removeCatalog(category: Category) {
+    if (!window.confirm(`حذف الكتالوج «${category.name}»؟`)) return;
+    if (supabaseConfigured) { setError("إدارة الكتالوجات متاحة حالياً في الوضع المحلي فقط."); return; }
+    deleteLocalCategory(category.id); setCategories(getLocalCategories()); setNotice("تم حذف الكتالوج.");
   }
 
   async function saveProduct(event: FormEvent<HTMLFormElement>) {
@@ -349,7 +385,7 @@ function AdminProducts() {
       price_mad: Number(row.price || 0),
       discount_price_mad: null,
       category_id: row.category || null,
-      image_urls: [],
+      image_urls: row.image_url.trim() ? [row.image_url.trim()] : [],
       stock: Math.max(0, Number(row.stock || 0)),
       sku: null,
       brand: null,
@@ -454,10 +490,20 @@ function AdminProducts() {
         {settingsOpen && <div className="ai-settings-grid"><label><span>لغة الوصف والوسوم</span><select value={aiSettings.language} onChange={(event) => updateAISettings("language", event.target.value as AISettings["language"])}>{(Object.keys(languageLabels) as AISettings["language"][]).map((language) => <option key={language} value={language}>{languageLabels[language]}</option>)}</select></label><label><span>نبرة الكتابة</span><select value={aiSettings.tone} onChange={(event) => updateAISettings("tone", event.target.value as AISettings["tone"])}>{(Object.keys(toneLabels) as AISettings["tone"][]).map((tone) => <option key={tone} value={tone}>{toneLabels[tone]}</option>)}</select></label><label><span>طول الوصف</span><select value={aiSettings.descriptionLength} onChange={(event) => updateAISettings("descriptionLength", event.target.value as AISettings["descriptionLength"])}>{(Object.keys(lengthLabels) as AISettings["descriptionLength"][]).map((length) => <option key={length} value={length}>{lengthLabels[length]}</option>)}</select></label><label><span>عدد الوسوم</span><select value={aiSettings.tagCount} onChange={(event) => updateAISettings("tagCount", Number(event.target.value))}>{[5, 6, 8, 10, 12].map((count) => <option key={count} value={count}>{count} وسوم</option>)}</select></label><div className="ai-settings-summary"><Sparkles size={15} /> {languageLabels[aiSettings.language]} · {toneLabels[aiSettings.tone]} · {lengthLabels[aiSettings.descriptionLength]} · {aiSettings.tagCount} وسوم</div><button type="button" className="admin-primary-button" onClick={saveAISettings}>حفظ الإعدادات</button></div>}
       </section>
 
+      <section className="dashboard-panel catalog-manager-panel">
+        <div className="panel-heading"><div><span className="admin-eyebrow">التصنيفات والكتالوجات</span><h3>إدارة الكتالوجات</h3><p className="admin-panel-help">أنشئ تصنيفات جديدة، ثم اخترها لكل منتج أثناء الإضافة الجماعية أو التعديل.</p></div></div>
+        <div className="admin-form-grid">
+          <label><span>اسم الكتالوج</span><input value={catalogName} onChange={(event) => setCatalogName(event.target.value)} placeholder="مثلاً: أجهزة المطبخ" /></label>
+          <label><span>الرابط المختصر</span><input dir="ltr" value={catalogSlug} onChange={(event) => setCatalogSlug(event.target.value)} placeholder="kitchen-appliances" /></label>
+        </div>
+        <div className="admin-form-actions"><button type="button" className="admin-primary-button" onClick={saveCatalog}>{editingCategoryId ? "حفظ تعديل الكتالوج" : "إضافة الكتالوج"}</button>{editingCategoryId && <button type="button" className="admin-secondary-button" onClick={() => { setEditingCategoryId(null); setCatalogName(""); setCatalogSlug(""); }}>إلغاء</button>}</div>
+        <div className="admin-row-actions catalog-list">{categories.map((category) => <span className="status-pill" key={category.id}>{category.name}<button type="button" className="admin-icon-button" onClick={() => editCatalog(category)} aria-label={`تعديل ${category.name}`}><Edit3 size={13} /></button><button type="button" className="admin-icon-button" onClick={() => removeCatalog(category)} aria-label={`حذف ${category.name}`}><Trash2 size={13} /></button></span>)}</div>
+      </section>
+
       <section className="dashboard-panel bulk-products-panel">
         <div className="panel-heading"><div><span className="admin-eyebrow">إضافة سريعة</span><h3>أضف عدة منتجات مرة واحدة</h3><p className="admin-panel-help">يمكنك ترك السعر فارغاً؛ سيُحفظ المنتج كمسودة لتكمل معلوماته لاحقاً.</p></div><div className="bulk-panel-actions"><button type="button" className="admin-secondary-button" onClick={() => addBulkRows()}><Plus size={15} /> صفوف جديدة</button><button type="button" className="admin-primary-button" onClick={() => void saveBulkProducts()} disabled={bulkSaving}><ClipboardPaste size={15} /> {bulkProgress || (bulkSaving ? "جار الحفظ..." : "حفظ الكل")}</button></div></div>
         <div className="bulk-import"><textarea value={bulkText} onChange={(event) => setBulkText(event.target.value)} placeholder="الصق من Excel أو Google Sheets: الاسم، السعر، المخزون، التصنيف (كل منتج في سطر)" /><button type="button" className="admin-secondary-button" onClick={importBulkText}>استيراد الصفوف</button></div>
-        <div className="admin-table-wrap bulk-table-wrap"><table className="admin-table bulk-table" aria-label="إضافة منتجات بالجملة"><thead><tr><th>اسم المنتج *</th><th>السعر لاحقاً</th><th>المخزون</th><th>التصنيف</th><th>الحالة</th><th>الوسوم</th><th>مساعدة</th></tr></thead><tbody>{bulkRows.map((row, index) => <tr key={index}><td><input value={row.name} onChange={(event) => updateBulkRow(index, "name", event.target.value)} placeholder="مثلاً: خلاط Moulinex" /></td><td><input dir="ltr" type="number" min="0" value={row.price} onChange={(event) => updateBulkRow(index, "price", event.target.value)} placeholder="لاحقاً" /></td><td><input dir="ltr" type="number" min="0" step="1" value={row.stock} onChange={(event) => updateBulkRow(index, "stock", event.target.value)} /></td><td><select value={row.category} onChange={(event) => updateBulkRow(index, "category", event.target.value)}><option value="">بدون تصنيف</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></td><td><select value={row.status} onChange={(event) => updateBulkRow(index, "status", event.target.value)}><option value="draft">مسودة</option><option value="published">منشور</option><option value="archived">مؤرشف</option></select></td><td><input value={row.tags} onChange={(event) => updateBulkRow(index, "tags", event.target.value)} placeholder="وسوم" /></td><td><button type="button" className="admin-action ai" onClick={() => assistBulkRow(index)} title="توليد الوصف والوسوم والرابط بواسطة OpenAI"><Sparkles size={14} /> اقتراح</button></td></tr>)}</tbody></table></div>
+        <div className="admin-table-wrap bulk-table-wrap"><table className="admin-table bulk-table" aria-label="إضافة منتجات بالجملة"><thead><tr><th>اسم المنتج *</th><th>الوصف</th><th>السعر لاحقاً</th><th>المخزون</th><th>التصنيف</th><th>الحالة</th><th>الصورة</th><th>الوسوم</th><th>مساعدة</th></tr></thead><tbody>{bulkRows.map((row, index) => <tr key={index}><td><input value={row.name} onChange={(event) => updateBulkRow(index, "name", event.target.value)} placeholder="مثلاً: خلاط Moulinex" /></td><td><input value={row.description} onChange={(event) => updateBulkRow(index, "description", event.target.value)} placeholder="وصف المنتج" /></td><td><input dir="ltr" type="number" min="0" value={row.price} onChange={(event) => updateBulkRow(index, "price", event.target.value)} placeholder="لاحقاً" /></td><td><input dir="ltr" type="number" min="0" step="1" value={row.stock} onChange={(event) => updateBulkRow(index, "stock", event.target.value)} /></td><td><select value={row.category} onChange={(event) => updateBulkRow(index, "category", event.target.value)}><option value="">بدون تصنيف</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></td><td><select value={row.status} onChange={(event) => updateBulkRow(index, "status", event.target.value)}><option value="draft">مسودة</option><option value="published">منشور</option><option value="archived">مؤرشف</option></select></td><td><input type="file" accept="image/*" onChange={(event) => readBulkImageFile(index, event.target.files?.[0])} /><input dir="ltr" value={row.image_url.startsWith("data:") ? "تم اختيار صورة" : row.image_url} onChange={(event) => updateBulkRow(index, "image_url", event.target.value)} placeholder="رابط الصورة" /></td><td><input value={row.tags} onChange={(event) => updateBulkRow(index, "tags", event.target.value)} placeholder="وسوم" /></td><td><button type="button" className="admin-action ai" onClick={() => void assistBulkRow(index)} title="توليد الوصف والوسوم والرابط بواسطة OpenAI"><Sparkles size={14} /> اقتراح</button></td></tr>)}</tbody></table></div>
         <small className="admin-ai-note"><Sparkles size={13} /> OpenAI يولّد الوصف والوسوم والرابط، وتبقى كل الاقتراحات قابلة للمراجعة قبل الحفظ.</small>
       </section>
 

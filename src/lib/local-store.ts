@@ -34,6 +34,17 @@ export function upsertLocalProduct(product: Omit<LocalProduct, "id" | "created_a
 }
 export function deleteLocalProduct(productId: string) { saveLocalProducts(getLocalProducts().filter((item) => item.id !== productId)); }
 export function getLocalCategories(): LocalCategory[] { return read(CATEGORIES_KEY, starterCategories); }
+export function saveLocalCategories(categories: LocalCategory[]) { write(CATEGORIES_KEY, categories); }
+export function upsertLocalCategory(name: string, slug: string, categoryId?: string): LocalCategory {
+  const categories = getLocalCategories();
+  const saved: LocalCategory = { id: categoryId || id("category"), name: name.trim(), slug: slug.trim(), is_active: true, sort_order: categories.length };
+  const index = categories.findIndex((item) => item.id === saved.id);
+  if (index >= 0) categories[index] = { ...categories[index], ...saved };
+  else categories.push(saved);
+  saveLocalCategories(categories);
+  return saved;
+}
+export function deleteLocalCategory(categoryId: string) { saveLocalCategories(getLocalCategories().filter((item) => item.id !== categoryId)); }
 export function getLocalOrders(): LocalOrder[] { return read<LocalOrder[]>(ORDERS_KEY, []); }
 export function saveLocalOrders(orders: LocalOrder[]) { write(ORDERS_KEY, orders); }
 export function updateLocalOrder(idValue: string, patch: LocalOrder) { saveLocalOrders(getLocalOrders().map((order) => order.id === idValue ? { ...order, ...patch } : order)); }
