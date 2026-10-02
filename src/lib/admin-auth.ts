@@ -37,7 +37,7 @@ export async function signInAdmin(email: string, password: string) {
       await supabase.auth.signOut();
       return {
         data: { user: null, session: null },
-        error: new Error("This account is not authorized for admin access."),
+        error: new Error("تم تسجيل الدخول، لكن هذا الحساب غير مضاف إلى قائمة مديري المتجر."),
       };
     }
 

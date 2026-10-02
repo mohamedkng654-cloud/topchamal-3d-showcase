@@ -76,7 +76,7 @@ function AdminLogin() {
               />
             </div>
           </label>
-          <button className="login-submit" disabled={loading || !supabaseConfigured}>
+          <button className="login-submit" disabled={loading}>
             {loading ? (
               "جار تسجيل الدخول..."
             ) : (
