@@ -27,12 +27,7 @@ export async function signInAdmin(email: string, password: string) {
     const result = await supabase.auth.signInWithPassword({ email, password });
     if (result.error) return result;
 
-    let profile = await getAdminProfile();
-    if (!profile) {
-      const claim = await supabase.rpc("claim_initial_admin");
-      if (!claim.error) profile = await getAdminProfile();
-    }
-
+    const profile = await getAdminProfile();
     if (!profile) {
       await supabase.auth.signOut();
       return {

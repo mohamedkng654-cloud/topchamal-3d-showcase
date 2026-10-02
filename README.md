@@ -25,7 +25,17 @@ Edit `src/data/products.json`. Each product contains `id`, `name`, `category`, `
 
 The authenticated admin at `/admin/products` can use OpenAI to generate product descriptions, SEO slugs, and tags. Configure `OPENAI_API_KEY` as a **server-only deployment secret**; never use a `VITE_` variable for it. `OPENAI_MODEL` defaults to `gpt-5-mini` and can be changed to another model supported by the configured OpenAI-compatible endpoint. Apply `drizzle/migrations/0002_product_tags.sql` before saving generated tags.
 
-Apply all migrations, including `drizzle/migrations/0003_initial_admin_claim.sql`. After creating the first user in Supabase Authentication, that user becomes the initial store owner the first time they sign in at `/admin/login`; later users must be added to `public.admins` by an existing owner.
+Apply all migrations, including `drizzle/migrations/0004_disable_initial_admin_claim.sql`. Admin access is explicit: normal customers can sign in or use the storefront without admin access. After creating an owner in Supabase Authentication, add that user to `public.admins` from the Supabase SQL editor, then add additional trusted staff there with the appropriate `role`; only rows in `public.admins` can enter the admin panel.
+
+Example owner assignment in Supabase SQL editor (replace the email):
+
+```sql
+insert into public.admins (user_id, email, display_name, role, is_active)
+select id, email, email, 'owner'::public.admin_role, true
+from auth.users
+where email = 'owner@example.com'
+on conflict (user_id) do update set role = 'owner', is_active = true;
+```
 
 ## WhatsApp destination
 
