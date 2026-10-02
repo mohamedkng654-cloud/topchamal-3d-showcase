@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Archive, ClipboardPaste, Edit3, ImagePlus, PackageX, Plus, RefreshCw, Search, Sparkles, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { generateProductMetadata } from "@/lib/admin-ai.functions";
 
 export const Route = createFileRoute("/admin/products")({ component: AdminProducts });
 
@@ -21,6 +22,7 @@ type Product = {
   brand: string | null;
   status: ProductStatus;
   is_featured: boolean;
+  tags: string[];
   created_at: string;
 };
 type BulkRow = {
@@ -31,6 +33,7 @@ type BulkRow = {
   status: ProductStatus;
   slug: string;
   description: string;
+  tags: string;
 };
 type ProductForm = {
   name: string;
@@ -45,9 +48,10 @@ type ProductForm = {
   brand: string;
   status: ProductStatus;
   is_featured: boolean;
+  tags: string;
 };
 
-const emptyBulkRow = (): BulkRow => ({ name: "", price: "", stock: "0", category: "", status: "draft", slug: "", description: "" });
+const emptyBulkRow = (): BulkRow => ({ name: "", price: "", stock: "0", category: "", status: "draft", slug: "", description: "", tags: "" });
 const slugify = (value: string) => value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const guessDescription = (name: string) => name.trim() ? `منتج ${name.trim()} من تشكيلة Topchamal.` : "";
 
@@ -64,6 +68,7 @@ const emptyForm: ProductForm = {
   brand: "",
   status: "draft",
   is_featured: false,
+  tags: "",
 };
 
 const money = (value: number) => `${Number(value || 0).toLocaleString("fr-MA")} د.م`;
@@ -87,6 +92,7 @@ function toForm(product: Product): ProductForm {
     brand: product.brand || "",
     status: product.status,
     is_featured: product.is_featured,
+    tags: (product.tags || []).join(", "),
   };
 }
 
@@ -103,6 +109,7 @@ function AdminProducts() {
   const [bulkRows, setBulkRows] = useState<BulkRow[]>(() => Array.from({ length: 5 }, emptyBulkRow));
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkText, setBulkText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   async function loadData() {
     setLoading(true);
@@ -183,6 +190,7 @@ function AdminProducts() {
       brand: form.brand.trim() || null,
       status: form.status,
       is_featured: form.is_featured,
+      tags: form.tags.split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 12),
     };
     const result = editingId
       ? await supabase.from("products").update(payload).eq("id", editingId).select("*").single()
@@ -221,14 +229,40 @@ function AdminProducts() {
     }
   }
 
-  function assistBulkRow(index: number) {
-    setBulkRows((current) => current.map((row, rowIndex) => {
-      if (rowIndex !== index) return row;
-      const name = row.name.trim();
-      const category = categories.find((item) => name.toLowerCase().includes(item.name.toLowerCase()) || name.toLowerCase().includes(item.slug.toLowerCase()));
-      return { ...row, slug: row.slug || slugify(name), description: row.description || guessDescription(name), category: row.category || category?.id || "" };
-    }));
-    setNotice("تمت مساعدة الصف تلقائياً. راجع الاقتراحات قبل الحفظ.");
+  async function assistBulkRow(index: number) {
+    const row = bulkRows[index];
+    if (!row?.name.trim()) {
+      setError("أدخل اسم المنتج أولاً ثم اضغط المساعدة الذكية.");
+      return;
+    }
+    setError("");
+    try {
+      const category = categories.find((item) => item.id === row.category);
+      const suggestion = await generateProductMetadata({ data: { name: row.name, category: category?.name || "", existingDescription: row.description, language: "ar" } });
+      setBulkRows((current) => current.map((item, rowIndex) => rowIndex === index ? { ...item, slug: suggestion.slug, description: suggestion.description, tags: suggestion.tags.join(", ") } : item));
+      setNotice("تم إنشاء الوصف والوسوم والرابط بواسطة OpenAI. راجعها قبل الحفظ.");
+    } catch (assistError) {
+      setError(assistError instanceof Error ? assistError.message : "تعذر تشغيل المساعد الذكي.");
+    }
+  }
+
+  async function assistSingleProduct() {
+    if (!form.name.trim()) {
+      setError("أدخل اسم المنتج أولاً ثم شغّل المساعد الذكي.");
+      return;
+    }
+    setAiLoading(true);
+    setError("");
+    try {
+      const category = categories.find((item) => item.id === form.category_id);
+      const suggestion = await generateProductMetadata({ data: { name: form.name, brand: form.brand, category: category?.name || "", existingDescription: form.description, language: "ar" } });
+      setForm((current) => ({ ...current, slug: suggestion.slug, description: suggestion.description, tags: suggestion.tags.join(", ") }));
+      setNotice("تم إنشاء الوصف والوسوم والرابط بواسطة OpenAI. راجعها قبل الحفظ.");
+    } catch (assistError) {
+      setError(assistError instanceof Error ? assistError.message : "تعذر تشغيل المساعد الذكي.");
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   async function saveBulkProducts() {
@@ -243,6 +277,7 @@ function AdminProducts() {
       name: row.name.trim(),
       slug: slugify(row.slug || row.name) || `product-${Date.now()}-${index}`,
       description: row.description.trim() || null,
+      tags: row.tags.split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 12),
       price_mad: Number(row.price || 0),
       discount_price_mad: null,
       category_id: row.category || null,
@@ -311,8 +346,8 @@ function AdminProducts() {
       <section className="dashboard-panel bulk-products-panel">
         <div className="panel-heading"><div><span className="admin-eyebrow">إضافة سريعة</span><h3>أضف عدة منتجات مرة واحدة</h3><p className="admin-panel-help">يمكنك ترك السعر فارغاً؛ سيُحفظ المنتج كمسودة لتكمل معلوماته لاحقاً.</p></div><div className="bulk-panel-actions"><button type="button" className="admin-secondary-button" onClick={() => addBulkRows()}><Plus size={15} /> صفوف جديدة</button><button type="button" className="admin-primary-button" onClick={() => void saveBulkProducts()} disabled={bulkSaving}><ClipboardPaste size={15} /> {bulkSaving ? "جار الحفظ..." : "حفظ الكل"}</button></div></div>
         <div className="bulk-import"><textarea value={bulkText} onChange={(event) => setBulkText(event.target.value)} placeholder="الصق من Excel أو Google Sheets: الاسم، السعر، المخزون، التصنيف (كل منتج في سطر)" /><button type="button" className="admin-secondary-button" onClick={importBulkText}>استيراد الصفوف</button></div>
-        <div className="admin-table-wrap bulk-table-wrap"><table className="admin-table bulk-table"><thead><tr><th>اسم المنتج *</th><th>السعر لاحقاً</th><th>المخزون</th><th>التصنيف</th><th>الحالة</th><th>مساعدة</th></tr></thead><tbody>{bulkRows.map((row, index) => <tr key={index}><td><input value={row.name} onChange={(event) => updateBulkRow(index, "name", event.target.value)} placeholder="مثلاً: خلاط Moulinex" /></td><td><input dir="ltr" type="number" min="0" value={row.price} onChange={(event) => updateBulkRow(index, "price", event.target.value)} placeholder="لاحقاً" /></td><td><input dir="ltr" type="number" min="0" step="1" value={row.stock} onChange={(event) => updateBulkRow(index, "stock", event.target.value)} /></td><td><select value={row.category} onChange={(event) => updateBulkRow(index, "category", event.target.value)}><option value="">بدون تصنيف</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></td><td><select value={row.status} onChange={(event) => updateBulkRow(index, "status", event.target.value)}><option value="draft">مسودة</option><option value="published">منشور</option><option value="archived">مؤرشف</option></select></td><td><button type="button" className="admin-action ai" onClick={() => assistBulkRow(index)} title="اقتراح الرابط والوصف والتصنيف"><Sparkles size={14} /> اقتراح</button></td></tr>)}</tbody></table></div>
-        <small className="admin-ai-note"><Sparkles size={13} /> المساعد يقترح الرابط والوصف والتصنيف من اسم المنتج، ويبقي كل شيء قابلاً للمراجعة قبل الحفظ.</small>
+        <div className="admin-table-wrap bulk-table-wrap"><table className="admin-table bulk-table"><thead><tr><th>اسم المنتج *</th><th>السعر لاحقاً</th><th>المخزون</th><th>التصنيف</th><th>الحالة</th><th>الوسوم</th><th>مساعدة</th></tr></thead><tbody>{bulkRows.map((row, index) => <tr key={index}><td><input value={row.name} onChange={(event) => updateBulkRow(index, "name", event.target.value)} placeholder="مثلاً: خلاط Moulinex" /></td><td><input dir="ltr" type="number" min="0" value={row.price} onChange={(event) => updateBulkRow(index, "price", event.target.value)} placeholder="لاحقاً" /></td><td><input dir="ltr" type="number" min="0" step="1" value={row.stock} onChange={(event) => updateBulkRow(index, "stock", event.target.value)} /></td><td><select value={row.category} onChange={(event) => updateBulkRow(index, "category", event.target.value)}><option value="">بدون تصنيف</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></td><td><select value={row.status} onChange={(event) => updateBulkRow(index, "status", event.target.value)}><option value="draft">مسودة</option><option value="published">منشور</option><option value="archived">مؤرشف</option></select></td><td><input value={row.tags} onChange={(event) => updateBulkRow(index, "tags", event.target.value)} placeholder="وسوم" /></td><td><button type="button" className="admin-action ai" onClick={() => assistBulkRow(index)} title="توليد الوصف والوسوم والرابط بواسطة OpenAI"><Sparkles size={14} /> اقتراح</button></td></tr>)}</tbody></table></div>
+        <small className="admin-ai-note"><Sparkles size={13} /> OpenAI يولّد الوصف والوسوم والرابط، وتبقى كل الاقتراحات قابلة للمراجعة قبل الحفظ.</small>
       </section>
 
       <form className="dashboard-panel admin-form-panel" onSubmit={saveProduct}>
@@ -338,10 +373,11 @@ function AdminProducts() {
           <label><span>SKU</span><input dir="ltr" value={form.sku} onChange={(event) => updateField("sku", event.target.value)} /></label>
           <label><span>الحالة</span><select value={form.status} onChange={(event) => updateField("status", event.target.value as ProductStatus)}>{(Object.keys(statusLabels) as ProductStatus[]).map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select></label>
           <label className="admin-check-field"><input type="checkbox" checked={form.is_featured} onChange={(event) => updateField("is_featured", event.target.checked)} /><span>منتج مميز</span></label>
+          <label className="admin-form-wide"><span>الوسوم (مفصولة بفواصل)</span><input value={form.tags} onChange={(event) => updateField("tags", event.target.value)} placeholder="خلاط، مطبخ، Moulinex" /></label>
           <label className="admin-form-wide"><span>رابط الصورة</span><div className="admin-input-with-icon"><ImagePlus size={16} /><input dir="ltr" value={form.image_url} onChange={(event) => updateField("image_url", event.target.value)} placeholder="https://..." /></div></label>
           <label className="admin-form-wide"><span>الوصف</span><textarea rows={3} value={form.description} onChange={(event) => updateField("description", event.target.value)} placeholder="وصف المنتج" /></label>
         </div>
-        <div className="admin-form-actions"><button type="submit" className="admin-primary-button" disabled={saving}>{saving ? "جار الحفظ..." : editingId ? "حفظ التعديلات" : "إضافة المنتج"}</button><button type="button" className="admin-secondary-button" onClick={startCreate}>مسح الحقول</button></div>
+        <div className="admin-form-actions"><button type="button" className="admin-secondary-button ai-button" onClick={() => void assistSingleProduct()} disabled={aiLoading}>{aiLoading ? "جار التوليد..." : <><Sparkles size={15} /> توليد الوصف والوسوم بالـ AI</>}</button><button type="submit" className="admin-primary-button" disabled={saving}>{saving ? "جار الحفظ..." : editingId ? "حفظ التعديلات" : "إضافة المنتج"}</button><button type="button" className="admin-secondary-button" onClick={startCreate}>مسح الحقول</button></div>
       </form>
 
       <div className="dashboard-panel admin-table-panel">
