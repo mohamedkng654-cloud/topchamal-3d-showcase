@@ -8,6 +8,9 @@ const inputSchema = z.object({
   category: z.string().trim().max(100).optional().default(""),
   existingDescription: z.string().trim().max(1000).optional().default(""),
   language: z.enum(["ar", "fr", "en"]).default("ar"),
+  tone: z.enum(["professional", "friendly", "minimal"]).default("professional"),
+  descriptionLength: z.enum(["short", "standard", "long"]).default("standard"),
+  tagCount: z.number().int().min(5).max(12).default(8),
 });
 
 const outputSchema = z.object({
@@ -17,6 +20,8 @@ const outputSchema = z.object({
 });
 
 const languageNames = { ar: "Arabic", fr: "French", en: "English" } as const;
+const toneNames = { professional: "professional and trustworthy", friendly: "warm and friendly", minimal: "minimal and direct" } as const;
+const lengthNames = { short: "30-50 words", standard: "60-90 words", long: "100-140 words" } as const;
 
 export const generateProductMetadata = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -45,7 +50,7 @@ export const generateProductMetadata = createServerFn({ method: "POST" })
         messages: [
           {
             role: "system",
-            content: `You write concise ecommerce metadata for a Moroccan appliance store. Return only valid JSON. Write the description in ${languageNames[data.language]}. Do not invent technical specifications, warranties, prices, or claims. Use the provided product name as the source of truth. Tags should be short, useful search terms in the same language.`,
+            content: `You write concise ecommerce metadata for a Moroccan appliance store. Return only valid JSON. Write the description in ${languageNames[data.language]} with a ${toneNames[data.tone]} tone and a target length of ${lengthNames[data.descriptionLength]}. Generate exactly ${data.tagCount} short tags. Do not invent technical specifications, warranties, prices, or claims. Use the provided product name as the source of truth. Tags should be short, useful search terms in the same language.`,
           },
           {
             role: "user",
@@ -54,7 +59,7 @@ export const generateProductMetadata = createServerFn({ method: "POST" })
               brand: data.brand,
               category: data.category,
               existing_description: data.existingDescription,
-              output: { description: "60-90 words", tags: "5-10 short tags", slug: "lowercase latin SEO slug" },
+              output: { description: lengthNames[data.descriptionLength], tags: `${data.tagCount} short tags`, slug: "lowercase latin SEO slug" },
             }),
           },
         ],

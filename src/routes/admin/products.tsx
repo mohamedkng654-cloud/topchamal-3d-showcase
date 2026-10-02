@@ -35,6 +35,12 @@ type BulkRow = {
   description: string;
   tags: string;
 };
+type AISettings = {
+  language: "ar" | "fr" | "en";
+  tone: "professional" | "friendly" | "minimal";
+  descriptionLength: "short" | "standard" | "long";
+  tagCount: number;
+};
 type ProductForm = {
   name: string;
   slug: string;
@@ -50,6 +56,15 @@ type ProductForm = {
   is_featured: boolean;
   tags: string;
 };
+
+const defaultAISettings: AISettings = { language: "ar", tone: "professional", descriptionLength: "standard", tagCount: 8 };
+const readAISettings = (): AISettings => {
+  if (typeof window === "undefined") return defaultAISettings;
+  try { return { ...defaultAISettings, ...JSON.parse(window.localStorage.getItem("topchamal-ai-settings") || "{}") } as AISettings; } catch { return defaultAISettings; }
+};
+const languageLabels: Record<AISettings["language"], string> = { ar: "العربية", fr: "Français", en: "English" };
+const toneLabels: Record<AISettings["tone"], string> = { professional: "احترافي", friendly: "ودود", minimal: "مختصر" };
+const lengthLabels: Record<AISettings["descriptionLength"], string> = { short: "قصير (30-50 كلمة)", standard: "متوسط (60-90 كلمة)", long: "مفصل (100-140 كلمة)" };
 
 const emptyBulkRow = (): BulkRow => ({ name: "", price: "", stock: "0", category: "", status: "draft", slug: "", description: "", tags: "" });
 const slugify = (value: string) => value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -111,6 +126,8 @@ function AdminProducts() {
   const [bulkText, setBulkText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState("");
+  const [aiSettings, setAiSettings] = useState<AISettings>(readAISettings);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   async function loadData() {
     setLoading(true);
@@ -239,6 +256,16 @@ function AdminProducts() {
     }
   }
 
+  function updateAISettings<K extends keyof AISettings>(field: K, value: AISettings[K]) {
+    setAiSettings((current) => ({ ...current, [field]: value }));
+  }
+
+  function saveAISettings() {
+    window.localStorage.setItem("topchamal-ai-settings", JSON.stringify(aiSettings));
+    setNotice("تم حفظ إعدادات التوليد بالذكاء الاصطناعي.");
+    setSettingsOpen(false);
+  }
+
   async function assistBulkRow(index: number) {
     const row = bulkRows[index];
     if (!row?.name.trim()) {
@@ -248,7 +275,7 @@ function AdminProducts() {
     setError("");
     try {
       const category = categories.find((item) => item.id === row.category);
-      const suggestion = await generateProductMetadata({ data: { name: row.name, category: category?.name || "", existingDescription: row.description, language: "ar" } });
+      const suggestion = await generateProductMetadata({ data: { name: row.name, category: category?.name || "", existingDescription: row.description, language: aiSettings.language, tone: aiSettings.tone, descriptionLength: aiSettings.descriptionLength, tagCount: aiSettings.tagCount } });
       setBulkRows((current) => current.map((item, rowIndex) => rowIndex === index ? { ...item, slug: suggestion.slug, description: suggestion.description, tags: suggestion.tags.join(", ") } : item));
       setNotice("تم إنشاء الوصف والوسوم والرابط بواسطة OpenAI. راجعها قبل الحفظ.");
     } catch (assistError) {
@@ -265,7 +292,7 @@ function AdminProducts() {
     setError("");
     try {
       const category = categories.find((item) => item.id === form.category_id);
-      const suggestion = await generateProductMetadata({ data: { name: form.name, brand: form.brand, category: category?.name || "", existingDescription: form.description, language: "ar" } });
+      const suggestion = await generateProductMetadata({ data: { name: form.name, brand: form.brand, category: category?.name || "", existingDescription: form.description, language: aiSettings.language, tone: aiSettings.tone, descriptionLength: aiSettings.descriptionLength, tagCount: aiSettings.tagCount } });
       setForm((current) => ({ ...current, slug: suggestion.slug, description: suggestion.description, tags: suggestion.tags.join(", ") }));
       setNotice("تم إنشاء الوصف والوسوم والرابط بواسطة OpenAI. راجعها قبل الحفظ.");
     } catch (assistError) {
@@ -362,6 +389,11 @@ function AdminProducts() {
       </div>
 
       {(error || notice) && <div className={`admin-alert ${error ? "error" : "success"}`}>{error || notice}</div>}
+
+      <section className="dashboard-panel ai-settings-panel">
+        <div className="panel-heading"><div><span className="admin-eyebrow">إعدادات المساعد</span><h3>تخصيص التوليد بالذكاء الاصطناعي</h3><p className="admin-panel-help">هذه الإعدادات تُحفظ لهذا المتصفح وتُستخدم في الإضافة الفردية والجماعية.</p></div><button type="button" className="admin-secondary-button" onClick={() => setSettingsOpen((open) => !open)}><Sparkles size={15} /> {settingsOpen ? "إخفاء الإعدادات" : "فتح الإعدادات"}</button></div>
+        {settingsOpen && <div className="ai-settings-grid"><label><span>لغة الوصف والوسوم</span><select value={aiSettings.language} onChange={(event) => updateAISettings("language", event.target.value as AISettings["language"])}>{(Object.keys(languageLabels) as AISettings["language"][]).map((language) => <option key={language} value={language}>{languageLabels[language]}</option>)}</select></label><label><span>نبرة الكتابة</span><select value={aiSettings.tone} onChange={(event) => updateAISettings("tone", event.target.value as AISettings["tone"])}>{(Object.keys(toneLabels) as AISettings["tone"][]).map((tone) => <option key={tone} value={tone}>{toneLabels[tone]}</option>)}</select></label><label><span>طول الوصف</span><select value={aiSettings.descriptionLength} onChange={(event) => updateAISettings("descriptionLength", event.target.value as AISettings["descriptionLength"])}>{(Object.keys(lengthLabels) as AISettings["descriptionLength"][]).map((length) => <option key={length} value={length}>{lengthLabels[length]}</option>)}</select></label><label><span>عدد الوسوم</span><select value={aiSettings.tagCount} onChange={(event) => updateAISettings("tagCount", Number(event.target.value))}>{[5, 6, 8, 10, 12].map((count) => <option key={count} value={count}>{count} وسوم</option>)}</select></label><div className="ai-settings-summary"><Sparkles size={15} /> {languageLabels[aiSettings.language]} · {toneLabels[aiSettings.tone]} · {lengthLabels[aiSettings.descriptionLength]} · {aiSettings.tagCount} وسوم</div><button type="button" className="admin-primary-button" onClick={saveAISettings}>حفظ الإعدادات</button></div>}
+      </section>
 
       <section className="dashboard-panel bulk-products-panel">
         <div className="panel-heading"><div><span className="admin-eyebrow">إضافة سريعة</span><h3>أضف عدة منتجات مرة واحدة</h3><p className="admin-panel-help">يمكنك ترك السعر فارغاً؛ سيُحفظ المنتج كمسودة لتكمل معلوماته لاحقاً.</p></div><div className="bulk-panel-actions"><button type="button" className="admin-secondary-button" onClick={() => addBulkRows()}><Plus size={15} /> صفوف جديدة</button><button type="button" className="admin-primary-button" onClick={() => void saveBulkProducts()} disabled={bulkSaving}><ClipboardPaste size={15} /> {bulkProgress || (bulkSaving ? "جار الحفظ..." : "حفظ الكل")}</button></div></div>
