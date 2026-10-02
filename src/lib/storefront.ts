@@ -55,7 +55,12 @@ export async function loadStorefrontProducts(
     .eq("status", "published")
     .order("created_at", { ascending: false });
   if (error || !data?.length) return fallback;
-  return (data as CatalogRow[]).map(mapProduct);
+  const local = new Map(fallback.map((p) => [p.id, p]));
+  return (data as CatalogRow[]).map((row) => {
+    const product = mapProduct(row);
+    const match = local.get(product.id);
+    return match && product.image === fallbackImage ? { ...product, image: match.image } : product;
+  });
 }
 
 export type NewOrder = {
