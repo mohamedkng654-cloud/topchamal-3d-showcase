@@ -44,16 +44,25 @@ function AdminDashboard() {
   }, []);
   async function loadMetrics() {
     if (!supabaseConfigured) {
-      const orders = getLocalOrders() as Array<{ total_mad?: number; status?: string; customer_name?: string }>;
+      const orders = getLocalOrders() as Array<{
+        total_mad?: number;
+        status?: string;
+        customer_name?: string;
+      }>;
       const products = getLocalProducts();
       setMetrics({
-        revenue: orders.filter((order) => order.status !== "cancelled").reduce((sum, order) => sum + Number(order.total_mad || 0), 0),
+        revenue: orders
+          .filter((order) => order.status !== "cancelled")
+          .reduce((sum, order) => sum + Number(order.total_mad || 0), 0),
         orders: orders.length,
-        pending: orders.filter((order) => ["new", "confirmed", "preparing"].includes(order.status || "")).length,
+        pending: orders.filter((order) =>
+          ["new", "confirmed", "preparing"].includes(order.status || ""),
+        ).length,
         delivered: orders.filter((order) => order.status === "delivered").length,
         customers: new Set(orders.map((order) => String(order.customer_name || ""))).size,
         products: products.length,
-        lowStock: products.filter((product) => product.stock < 5 && product.status === "published").length,
+        lowStock: products.filter((product) => product.stock < 5 && product.status === "published")
+          .length,
       });
       setLoading(false);
       return;
@@ -124,7 +133,8 @@ function AdminDashboard() {
             <span>{label}</span>
             <strong>{loading ? "—" : value}</strong>
             <small>
-              <ArrowUpLeft size={12} /> بيانات مباشرة من Supabase
+              <ArrowUpLeft size={12} />{" "}
+              {supabaseConfigured ? "بيانات مباشرة من Supabase" : "بيانات محفوظة في هذا المتصفح"}
             </small>
           </article>
         ))}
@@ -152,7 +162,11 @@ function AdminDashboard() {
           </div>
           <div className="empty-dashboard">
             <Package size={26} />
-            <p>سيظهر هنا تفصيل المنتجات منخفضة المخزون عند ربط بيانات المنتجات.</p>
+            <p>
+              {supabaseConfigured
+                ? "سيظهر هنا تفصيل المنتجات منخفضة المخزون عند ربط بيانات المنتجات."
+                : "راجع المنتجات ذات المخزون المنخفض من صفحة الكتالوج."}
+            </p>
           </div>
         </section>
         <section className="dashboard-panel">
@@ -165,7 +179,11 @@ function AdminDashboard() {
           </div>
           <div className="empty-dashboard">
             <ShoppingCart size={26} />
-            <p>ستظهر الطلبات الحقيقية هنا بعد تشغيل الجداول وتلقي الطلبات.</p>
+            <p>
+              {supabaseConfigured
+                ? "ستظهر الطلبات الحقيقية هنا بعد تشغيل الجداول وتلقي الطلبات."
+                : "ستظهر الطلبات المحفوظة محلياً هنا بعد تسجيلها من المتجر."}
+            </p>
           </div>
         </section>
       </div>
