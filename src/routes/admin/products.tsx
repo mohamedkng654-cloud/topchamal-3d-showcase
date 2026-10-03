@@ -280,7 +280,7 @@ function AdminProducts() {
       tags: form.tags.split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 12),
     };
     if (!supabaseConfigured) {
-      upsertLocalProduct({ ...payload, id: editingId || undefined, created_at: undefined });
+      upsertLocalProduct(editingId ? { ...payload, id: editingId } : payload);
       setSaving(false);
       setNotice(editingId ? "تم تحديث المنتج بنجاح." : "تمت إضافة المنتج بنجاح.");
       if (!editingId) setForm(emptyForm);
