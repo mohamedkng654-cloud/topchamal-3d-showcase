@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { signInAdmin } from "@/lib/admin-auth";
@@ -9,6 +9,7 @@ export const Route = createFileRoute("/admin/login")({ component: AdminLogin });
 
 function AdminLogin() {
   const navigate = useNavigate();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -20,7 +21,10 @@ function AdminLogin() {
     setLoading(true);
     const result = await signInAdmin(email.trim(), password);
     if (result.error) setError(result.error.message || "تعذر تسجيل الدخول. تحقق من البيانات.");
-    else await navigate({ to: "/admin" });
+    else {
+      await router.invalidate();
+      await navigate({ to: "/admin", replace: true });
+    }
     setLoading(false);
   }
 
@@ -91,9 +95,6 @@ function AdminLogin() {
           <ShieldCheck size={16} />
           <span>وصول آمن للمستخدمين المصرح لهم فقط</span>
         </div>
-        <a className="back-store" href="/">
-          العودة إلى المتجر
-        </a>
       </section>
     </main>
   );
