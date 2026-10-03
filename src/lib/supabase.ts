@@ -4,12 +4,12 @@
 export { supabase } from "@/integrations/supabase/client";
 
 const runtimeEnv = typeof process !== "undefined" ? process.env : undefined;
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || runtimeEnv?.SUPABASE_URL;
+const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] || runtimeEnv?.["SUPABASE_URL"];
 const supabaseKey =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  runtimeEnv?.SUPABASE_PUBLISHABLE_KEY ||
-  runtimeEnv?.SUPABASE_ANON_KEY;
+  import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+  import.meta.env["VITE_SUPABASE_ANON_KEY"] ||
+  runtimeEnv?.["SUPABASE_PUBLISHABLE_KEY"] ||
+  runtimeEnv?.["SUPABASE_ANON_KEY"];
 
 export const supabaseConfigured = Boolean(
   supabaseUrl && supabaseKey,
