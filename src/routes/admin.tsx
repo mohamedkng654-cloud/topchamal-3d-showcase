@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import {
   BarChart3,
   Bell,
@@ -28,6 +28,7 @@ export const Route = createFileRoute("/admin")({
     }
     const admin = await getAdminProfile();
     if (!admin && location.pathname !== "/admin/login") throw redirect({ to: "/admin/login" });
+    if (admin && location.pathname === "/admin/login") throw redirect({ to: "/admin" });
     return { admin };
   },
   component: AdminLayout,
@@ -42,10 +43,12 @@ const navigation = [
 
 function AdminLayout() {
   const navigate = useNavigate();
+  const router = useRouter();
   const { admin } = Route.useRouteContext() as { admin: AdminProfile | null };
 
   async function logout() {
     await signOutAdmin();
+    await router.invalidate();
     await navigate({ to: "/admin/login" });
   }
 
