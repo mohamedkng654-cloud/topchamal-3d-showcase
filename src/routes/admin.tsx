@@ -22,14 +22,17 @@ import "../styles/admin.css";
 export const Route = createFileRoute("/admin")({
   ssr: false,
   beforeLoad: async ({ location }) => {
+    const isLoginRoute = location.pathname === "/admin/login";
+    const forceLogin =
+      isLoginRoute && new URLSearchParams(location.search).get("login") === "1";
     if (!supabaseConfigured && !getLocalAdmin()) {
-      if (location.pathname !== "/admin/login") throw redirect({ to: "/admin/login" });
+      if (!isLoginRoute) throw redirect({ to: "/admin/login" });
       return { admin: null };
     }
     const admin = await getAdminProfile();
-    if (!admin && location.pathname !== "/admin/login") throw redirect({ to: "/admin/login" });
-    if (admin && location.pathname === "/admin/login") throw redirect({ to: "/admin" });
-    return { admin };
+    if (!admin && !isLoginRoute) throw redirect({ to: "/admin/login" });
+    if (admin && isLoginRoute && !forceLogin) throw redirect({ to: "/admin" });
+    return { admin: forceLogin ? null : admin };
   },
   component: AdminLayout,
 });

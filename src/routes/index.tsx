@@ -315,8 +315,8 @@ export function Storefront() {
             <a href="#about">لماذا نحن</a>
             <a href="#faq">الأسئلة الشائعة</a>
           </nav>
-          <a className="btn btn-outline admin-link" href="/admin/login">
-            الإدارة
+          <a className="btn btn-outline admin-link" href="/admin/login?login=1">
+            تسجيل دخول الإدارة
           </a>
           <div className="header-actions">
             <Button
