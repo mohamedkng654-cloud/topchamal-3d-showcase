@@ -65,7 +65,17 @@ function PictureView({
   return (
     <div className={interactive ? "hero-scene picture-scene" : "showcase-visual picture-scene"}>
       <div className="hero-fallback" />
-      <img key={src} src={src} alt={alt} className="scene-picture" loading={interactive ? "eager" : "lazy"} />
+      <img
+        key={src}
+        src={src}
+        alt={alt}
+        className="scene-picture"
+        loading={interactive ? "eager" : "lazy"}
+        onError={(event) => {
+          if (!event.currentTarget.src.endsWith("/topchamal-logo.jpg"))
+            event.currentTarget.src = "/topchamal-logo.jpg";
+        }}
+      />
     </div>
   );
 }
@@ -246,8 +256,15 @@ export function Storefront() {
         const saved = JSON.parse(localStorage.getItem("topchamal-local-orders") || "[]");
         const orders = Array.isArray(saved) ? saved : [];
         orders.push({
-          id: `local-order-${Date.now()}`, order_number: orderNumber, customer_name: name, phone, city,
-          total_mad: orderTotal, payment_method: "cash_on_delivery", status: "new", created_at: new Date().toISOString(),
+          id: `local-order-${Date.now()}`,
+          order_number: orderNumber,
+          customer_name: name,
+          phone,
+          city,
+          total_mad: orderTotal,
+          payment_method: "cash_on_delivery",
+          status: "new",
+          created_at: new Date().toISOString(),
           items: lines,
         });
         localStorage.setItem("topchamal-local-orders", JSON.stringify(orders.slice(-50)));
@@ -432,6 +449,10 @@ export function Storefront() {
                         products.find((p) => p.category === c.id)?.image
                       }
                       alt={c.label}
+                      onError={(event) => {
+                        if (!event.currentTarget.src.endsWith("/topchamal-logo.jpg"))
+                          event.currentTarget.src = "/topchamal-logo.jpg";
+                      }}
                     />
                   ) : (
                     <span className="category-symbol">✦</span>
@@ -447,7 +468,11 @@ export function Storefront() {
       {featuredProduct && (
         <section className="section showcase" id="featured">
           <div className="wrap showcase-grid">
-            <PictureView src={featuredProduct.image} alt={featuredProduct.name} interactive={false} />
+            <PictureView
+              src={featuredProduct.image}
+              alt={featuredProduct.name}
+              interactive={false}
+            />
             <div className="showcase-details reveal">
               <span className="eyebrow">
                 IN THE SPOTLIGHT · {String((feature % featured.length) + 1).padStart(2, "0")}
@@ -532,7 +557,15 @@ export function Storefront() {
                         -{Math.round((1 - p.price / p.oldPrice) * 100)}%
                       </span>
                     )}
-                    <img src={p.image} loading="lazy" alt={p.name} />
+                    <img
+                      src={p.image}
+                      loading="lazy"
+                      alt={p.name}
+                      onError={(event) => {
+                        if (!event.currentTarget.src.endsWith("/topchamal-logo.jpg"))
+                          event.currentTarget.src = "/topchamal-logo.jpg";
+                      }}
+                    />
                   </div>
                   <div className="product-info">
                     <span className="tag">{categoryName(p.category)}</span>
@@ -786,7 +819,14 @@ export function Storefront() {
                   const p = products.find((x) => x.id === line.id);
                   return p ? (
                     <div className="cart-line" key={line.id}>
-                      <img src={p.image} alt={p.name} />
+                      <img
+                        src={p.image}
+                        alt={p.name}
+                        onError={(event) => {
+                          if (!event.currentTarget.src.endsWith("/topchamal-logo.jpg"))
+                            event.currentTarget.src = "/topchamal-logo.jpg";
+                        }}
+                      />
                       <div>
                         <strong>{p.name}</strong>
                         <span>{formatPrice(p.price * line.quantity)} د.م</span>
