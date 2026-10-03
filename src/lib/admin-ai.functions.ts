@@ -36,11 +36,11 @@ export const generateProductMetadata = createServerFn({ method: "POST" })
 
     if (adminError || !admin) throw new Error("Unauthorized: admin access required");
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env["OPENAI_API_KEY"];
     if (!apiKey) throw new Error("OpenAI is not configured. Add OPENAI_API_KEY on the server.");
 
-    const baseUrl = (process.env.OPENAI_API_BASE || "https://api.openai.com/v1").replace(/\/$/, "");
-    const model = process.env.OPENAI_MODEL || "gpt-5-mini";
+    const baseUrl = (process.env["OPENAI_API_BASE"] || "https://api.openai.com/v1").replace(/\/$/, "");
+    const model = process.env["OPENAI_MODEL"] || "gpt-5-mini";
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },

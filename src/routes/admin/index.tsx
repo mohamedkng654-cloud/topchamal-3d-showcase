@@ -44,7 +44,7 @@ function AdminDashboard() {
   }, []);
   async function loadMetrics() {
     if (!supabaseConfigured) {
-      const orders = getLocalOrders() as Array<{ total_mad?: number; status?: string }>;
+      const orders = getLocalOrders() as Array<{ total_mad?: number; status?: string; customer_name?: string }>;
       const products = getLocalProducts();
       setMetrics({
         revenue: orders.filter((order) => order.status !== "cancelled").reduce((sum, order) => sum + Number(order.total_mad || 0), 0),

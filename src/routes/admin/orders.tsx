@@ -24,10 +24,10 @@ type Order = {
 type OrderForm = Pick<Order, "order_number" | "customer_name" | "phone" | "email" | "address" | "city" | "total_mad" | "payment_method" | "status">;
 function normalizeLocalOrder(raw: Record<string, unknown>, index: number): Order {
   return {
-    id: String(raw.id || `local-order-${index}`), order_number: String(raw.order_number || raw.orderNumber || `LOCAL-${index + 1}`),
-    customer_name: String(raw.customer_name || raw.name || ""), phone: String(raw.phone || ""), email: raw.email ? String(raw.email) : null,
-    address: raw.address ? String(raw.address) : null, city: raw.city ? String(raw.city) : null, total_mad: Number(raw.total_mad ?? raw.total ?? 0),
-    payment_method: String(raw.payment_method || "cash_on_delivery"), status: (raw.status as OrderStatus) || "new", created_at: String(raw.created_at || raw.createdAt || new Date().toISOString()),
+    id: String(raw["id"] || `local-order-${index}`), order_number: String(raw["order_number"] || raw["orderNumber"] || `LOCAL-${index + 1}`),
+    customer_name: String(raw["customer_name"] || raw["name"] || ""), phone: String(raw["phone"] || ""), email: raw["email"] ? String(raw["email"]) : null,
+    address: raw["address"] ? String(raw["address"]) : null, city: raw["city"] ? String(raw["city"]) : null, total_mad: Number(raw["total_mad"] ?? raw["total"] ?? 0),
+    payment_method: String(raw["payment_method"] || "cash_on_delivery"), status: (raw["status"] as OrderStatus) || "new", created_at: String(raw["created_at"] || raw["createdAt"] || new Date().toISOString()),
   };
 }
 const statusLabels: Record<OrderStatus, string> = {
@@ -120,14 +120,14 @@ function AdminOrders() {
     setSaving(true);
     setError("");
     if (!supabaseConfigured) {
-      updateLocalOrder(editing.id, { ...form, order_number: form.order_number.trim(), customer_name: form.customer_name.trim(), phone: form.phone.trim(), email: form.email.trim() || null, address: form.address.trim() || null, city: form.city.trim() || null, total_mad: Number(form.total_mad || 0) });
+      updateLocalOrder(editing.id, { ...form, order_number: form.order_number.trim(), customer_name: form.customer_name.trim(), phone: form.phone.trim(), email: (form.email ?? "").trim() || null, address: (form.address ?? "").trim() || null, city: (form.city ?? "").trim() || null, total_mad: Number(form.total_mad || 0) });
       setSaving(false);
       setNotice(`تم تحديث الطلب ${editing.order_number}.`);
       closeEdit();
       await loadOrders();
       return;
     }
-    const result = await supabase.from("orders").update({ ...form, order_number: form.order_number.trim(), customer_name: form.customer_name.trim(), phone: form.phone.trim(), email: form.email.trim() || null, address: form.address.trim() || null, city: form.city.trim() || null, total_mad: Number(form.total_mad || 0) }).eq("id", editing.id);
+    const result = await supabase.from("orders").update({ ...form, order_number: form.order_number.trim(), customer_name: form.customer_name.trim(), phone: form.phone.trim(), email: (form.email ?? "").trim() || null, address: (form.address ?? "").trim() || null, city: (form.city ?? "").trim() || null, total_mad: Number(form.total_mad || 0) }).eq("id", editing.id);
     setSaving(false);
     if (result.error) {
       setError(result.error.message);

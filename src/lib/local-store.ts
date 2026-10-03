@@ -19,10 +19,10 @@ export type LocalSiteSettings = {
   aboutTitle: string; promoTitle: string; promoDescription: string; footerDescription: string; whatsapp: string;
 };
 
-const starterCategories: LocalCategory[] = [
+const starterCategories: LocalCategory[] = ([
   ["cofee-machine", "آلات القهوة"], ["blender", "الخلاطات"], ["robot-cuiseur", "العجانات"],
   ["cocotte", "طنجرات الضغط"], ["presse", "عصارات"], ["aspirateur", "مكانس كهربائية"],
-].map(([slug, name], index) => ({ id: `category-${slug}`, name, slug, is_active: true, sort_order: index }));
+] as Array<[string, string]>).map(([slug, name], index) => ({ id: `category-${slug}`, name, slug, is_active: true, sort_order: index }));
 
 const starterProducts: LocalProduct[] = (catalog.products as Array<{ id: string; name: string; category: string; price: number; oldPrice: number | null; description: string; image: string }>).map((product) => ({
   id: product.id, name: product.name, slug: product.id, description: product.description, price_mad: product.price,
@@ -79,6 +79,6 @@ export function getLocalSiteSettings(): LocalSiteSettings { return { ...defaultS
 export function saveLocalSiteSettings(settings: LocalSiteSettings) { write(SETTINGS_KEY, settings); }
 export function getLocalOrders(): LocalOrder[] { return read<LocalOrder[]>(ORDERS_KEY, []); }
 export function saveLocalOrders(orders: LocalOrder[]) { write(ORDERS_KEY, orders); }
-export function updateLocalOrder(idValue: string, patch: LocalOrder) { saveLocalOrders(getLocalOrders().map((order) => order.id === idValue ? { ...order, ...patch } : order)); }
-export function deleteLocalOrder(idValue: string) { saveLocalOrders(getLocalOrders().filter((order) => order.id !== idValue)); }
+export function updateLocalOrder(idValue: string, patch: LocalOrder) { saveLocalOrders(getLocalOrders().map((order) => order["id"] === idValue ? { ...order, ...patch } : order)); }
+export function deleteLocalOrder(idValue: string) { saveLocalOrders(getLocalOrders().filter((order) => order["id"] !== idValue)); }
 export type { LocalProduct, LocalCategory, LocalOrder };

@@ -153,7 +153,7 @@ function AdminProducts() {
     while (true) {
       const result = await supabase.from("products").select("*").order("created_at", { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1);
       if (result.error) { productError = result.error.message; break; }
-      allProducts.push(...((result.data as Product[]) || []));
+      allProducts.push(...((result.data as unknown as Product[]) || []));
       if (!result.data || result.data.length < pageSize) break;
       page += 1;
     }
@@ -280,7 +280,7 @@ function AdminProducts() {
       tags: form.tags.split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 12),
     };
     if (!supabaseConfigured) {
-      upsertLocalProduct({ ...payload, id: editingId || undefined, created_at: undefined });
+      upsertLocalProduct(editingId ? { ...payload, id: editingId } : payload);
       setSaving(false);
       setNotice(editingId ? "تم تحديث المنتج بنجاح." : "تمت إضافة المنتج بنجاح.");
       if (!editingId) setForm(emptyForm);
@@ -288,9 +288,10 @@ function AdminProducts() {
       await loadData();
       return;
     }
+    const { tags: _tags, ...dbPayload } = payload;
     const result = editingId
-      ? await supabase.from("products").update(payload).eq("id", editingId).select("*").single()
-      : await supabase.from("products").insert(payload).select("*").single();
+      ? await supabase.from("products").update(dbPayload).eq("id", editingId).select("*").single()
+      : await supabase.from("products").insert(dbPayload).select("*").single();
     setSaving(false);
     if (result.error) {
       setError(result.error.message);
@@ -422,7 +423,7 @@ function AdminProducts() {
     for (let index = 0; index < payload.length; index += chunkSize) {
       const chunkNumber = Math.floor(index / chunkSize) + 1;
       setBulkProgress(`جار حفظ الدفعة ${chunkNumber} من ${totalChunks}...`);
-      const result = await supabase.from("products").insert(payload.slice(index, index + chunkSize));
+      const result = await supabase.from("products").insert(payload.slice(index, index + chunkSize).map(({ tags: _tags, ...rest }) => rest));
       if (result.error) {
         setBulkSaving(false);
         setBulkProgress("");
