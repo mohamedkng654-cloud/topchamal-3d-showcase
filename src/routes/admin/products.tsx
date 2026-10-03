@@ -150,6 +150,7 @@ const emptyForm: ProductForm = {
 };
 
 const money = (value: number) => `${Number(value || 0).toLocaleString("fr-MA")} د.م`;
+const productsTable = (): any => supabase.from("products");
 const statusLabels: Record<ProductStatus, string> = {
   draft: "مسودة",
   published: "منشور",
@@ -226,8 +227,7 @@ function AdminProducts() {
     let page = 0;
     let productError: string | null = null;
     while (true) {
-      const result = await supabase
-        .from("products")
+      const result = await productsTable()
         .select("*")
         .order("created_at", { ascending: false })
         .range(page * pageSize, page * pageSize + pageSize - 1);
@@ -235,7 +235,7 @@ function AdminProducts() {
         productError = result.error.message;
         break;
       }
-      allProducts.push(...((result.data as Product[]) || []));
+      allProducts.push(...((result.data as unknown as Product[]) || []));
       if (!result.data || result.data.length < pageSize) break;
       page += 1;
     }
@@ -421,8 +421,8 @@ function AdminProducts() {
       return;
     }
     const result = editingId
-      ? await supabase.from("products").update(payload).eq("id", editingId).select("*").single()
-      : await supabase.from("products").insert(payload).select("*").single();
+      ? await productsTable().update(payload).eq("id", editingId).select("*").single()
+      : await productsTable().insert(payload).select("*").single();
     setSaving(false);
     if (result.error) {
       setError(result.error.message);
@@ -658,8 +658,7 @@ function AdminProducts() {
     for (let index = 0; index < payload.length; index += chunkSize) {
       const chunkNumber = Math.floor(index / chunkSize) + 1;
       setBulkProgress(`جار حفظ الدفعة ${chunkNumber} من ${totalChunks}...`);
-      const result = await supabase
-        .from("products")
+      const result = await productsTable()
         .insert(payload.slice(index, index + chunkSize));
       if (result.error) {
         setBulkSaving(false);
@@ -685,7 +684,7 @@ function AdminProducts() {
       );
       return;
     }
-    const result = await supabase.from("products").update({ stock }).eq("id", product.id);
+    const result = await productsTable().update({ stock }).eq("id", product.id);
     if (result.error) setError(result.error.message);
     else {
       setNotice(stock === 0 ? "تم وضع المنتج خارج المخزون." : "تم تحديث المخزون.");
@@ -727,7 +726,7 @@ function AdminProducts() {
       if (editingId === product.id) startCreate();
       return;
     }
-    const result = await supabase.from("products").delete().eq("id", product.id);
+    const result = await productsTable().delete().eq("id", product.id);
     if (result.error) setError(result.error.message);
     else {
       setNotice("تم حذف المنتج.");
