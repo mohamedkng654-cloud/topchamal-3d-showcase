@@ -16,6 +16,7 @@ import {
   X,
   MessageCircle,
   Package,
+  Play,
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -28,7 +29,7 @@ import {
   loadStorefrontProducts,
   type StorefrontProduct,
 } from "@/lib/storefront";
-import { getLocalSiteSettings } from "@/lib/local-store";
+import { getActiveLocalStories, getLocalSiteSettings, type LocalStory } from "@/lib/local-store";
 const brandLogo = "/topchamal-logo.jpg";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -94,6 +95,7 @@ export function Storefront() {
   const [loaded, setLoaded] = useState(false);
   const [percent, setPercent] = useState(0);
   const [now, setNow] = useState(0);
+  const [stories, setStories] = useState<LocalStory[]>([]);
   const productRef = useRef<HTMLElement>(null);
   useEffect(() => {
     void loadStorefrontProducts(fallbackProducts).then(setProducts);
@@ -110,6 +112,7 @@ export function Storefront() {
       localStorage.removeItem("topchamal-cart");
     }
     setLoaded(true);
+    setStories(getActiveLocalStories());
     const t = setInterval(() => setNow(Date.now()), 1000);
     setNow(Date.now());
     return () => clearInterval(t);
@@ -418,6 +421,20 @@ export function Storefront() {
           </div>
         </div>
       </div>
+      {stories.length > 0 && (
+        <section className="stories-section" aria-label="قصص وعروض Topchamal">
+          <div className="wrap">
+            <div className="stories-heading"><div><span className="eyebrow">TOPCHAMAL STORIES</span><h2 className="section-heading">آخر العروض والقصص</h2></div><span className="stories-heading-note">تحديثات سريعة من المتجر</span></div>
+            <div className="stories-strip">
+              {stories.map((story) => <article className="story-card" key={story.id}>
+                <div className="story-media">{story.media_type === "video" ? <video src={story.media_url} autoPlay muted loop playsInline /> : <img src={story.media_url} alt={story.title} />}</div>
+                <div className="story-overlay"><span className="story-offer">{story.offer_label || "عرض خاص"}</span><h3>{story.title}</h3>{story.caption && <p>{story.caption}</p>}{story.product_name && <strong>{story.product_name}</strong>}{story.price_mad != null && <div className="story-price"><span>{formatPrice(story.price_mad)} د.م</span>{story.old_price_mad != null && <del>{formatPrice(story.old_price_mad)} د.م</del>}</div>}</div>
+                {story.media_type === "video" && <span className="story-play"><Play size={14} fill="currentColor" /></span>}
+              </article>)}
+            </div>
+          </div>
+        </section>
+      )}
       <section className="section category-section" id="categories">
         <div className="wrap">
           <div className="section-top reveal">

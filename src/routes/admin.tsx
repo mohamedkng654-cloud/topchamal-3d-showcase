@@ -10,6 +10,7 @@ import {
   Package,
   Settings,
   ShoppingCart,
+  Clapperboard,
   Store,
   Tag,
   Users,
@@ -41,6 +42,7 @@ const navigation = [
   { label: "نظرة عامة", to: "/admin", icon: LayoutDashboard },
   { label: "الكتالوج والمنتجات", to: "/admin/products", icon: Package },
   { label: "الطلبات والعملاء", to: "/admin/orders", icon: ShoppingCart },
+  { label: "القصص والعروض", to: "/admin/stories", icon: Clapperboard },
   { label: "محتوى الموقع", to: "/admin/site", icon: Store },
 ] as const;
 

@@ -4,6 +4,7 @@ const PRODUCTS_KEY = "topchamal-local-products";
 const CATEGORIES_KEY = "topchamal-local-categories";
 const ORDERS_KEY = "topchamal-local-orders";
 const SETTINGS_KEY = "topchamal-local-site-settings";
+const STORIES_KEY = "topchamal-local-stories";
 const CATALOG_SEEDED_KEY = "topchamal-local-catalog-seeded-v1";
 
 type LocalProduct = {
@@ -59,6 +60,22 @@ export type LocalSiteSettings = {
   promoDescription: string;
   footerDescription: string;
   whatsapp: string;
+};
+export type StoryDuration = "24h" | "72h" | "until_deleted";
+export type LocalStory = {
+  id: string;
+  media_type: "image" | "video";
+  media_url: string;
+  title: string;
+  caption: string;
+  product_name: string;
+  price_mad: number | null;
+  old_price_mad: number | null;
+  offer_label: string;
+  duration: StoryDuration;
+  is_active: boolean;
+  created_at: string;
+  expires_at: string | null;
 };
 
 const starterCategories: LocalCategory[] = ([
@@ -207,6 +224,42 @@ export function getLocalSiteSettings(): LocalSiteSettings {
 }
 export function saveLocalSiteSettings(settings: LocalSiteSettings) {
   write(SETTINGS_KEY, settings);
+}
+export function getLocalStories(): LocalStory[] {
+  return read<LocalStory[]>(STORIES_KEY, []).filter(
+    (story) => story && typeof story.id === "string" && typeof story.media_url === "string",
+  );
+}
+export function getActiveLocalStories(now = Date.now()): LocalStory[] {
+  return getLocalStories().filter(
+    (story) =>
+      story.is_active &&
+      (!story.expires_at || new Date(story.expires_at).getTime() > now),
+  );
+}
+export function upsertLocalStory(
+  story: Omit<LocalStory, "id" | "created_at"> & Partial<Pick<LocalStory, "id" | "created_at">>,
+): LocalStory {
+  const stories = getLocalStories();
+  const saved: LocalStory = {
+    ...story,
+    id: story.id || id("story"),
+    created_at: story.created_at || new Date().toISOString(),
+  };
+  const index = stories.findIndex((item) => item.id === saved.id);
+  if (index >= 0) stories[index] = saved;
+  else stories.unshift(saved);
+  write(STORIES_KEY, stories);
+  return saved;
+}
+export function updateLocalStory(idValue: string, patch: Partial<LocalStory>) {
+  write(
+    STORIES_KEY,
+    getLocalStories().map((story) => (story.id === idValue ? { ...story, ...patch } : story)),
+  );
+}
+export function deleteLocalStory(idValue: string) {
+  write(STORIES_KEY, getLocalStories().filter((story) => story.id !== idValue));
 }
 export function getLocalOrders(): LocalOrder[] {
   return read<LocalOrder[]>(ORDERS_KEY, []).map((order, index) => ({
