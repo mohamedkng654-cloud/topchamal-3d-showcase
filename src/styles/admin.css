@@ -283,6 +283,22 @@
   color: #c27b42;
   text-decoration: none;
 }
+.admin-collapse-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #e1e6ed;
+  background: #fff;
+  color: #728096;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 10px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.admin-collapse-button:hover { color: #c27b42; border-color: #d9b48f; }
+.admin-collapse-button svg { transition: transform .2s ease; }
+.admin-collapse-button svg.is-collapsed { transform: rotate(90deg); }
 .stock-alert {
   display: flex;
   align-items: center;

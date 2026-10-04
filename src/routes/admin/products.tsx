@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   Archive,
   ClipboardPaste,
+  ChevronDown,
   Edit3,
   ImagePlus,
   PackageX,
@@ -194,7 +195,6 @@ function AdminProducts() {
   const [aiLoading, setAiLoading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState("");
   const [aiSettings, setAiSettings] = useState<AISettings>(readAISettings);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [catalogName, setCatalogName] = useState("");
   const [catalogSlug, setCatalogSlug] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -207,6 +207,42 @@ function AdminProducts() {
     notes: "",
   });
   const [copilotLoading, setCopilotLoading] = useState(false);
+  const [collapsedPanels, setCollapsedPanels] = useState<Record<string, boolean>>(() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem("topchamal-admin-collapsed-panels") || "{}",
+      ) as Record<string, boolean>;
+    } catch {
+      return {};
+    }
+  });
+
+  function togglePanel(panel: string) {
+    setCollapsedPanels((current) => {
+      const next = { ...current, [panel]: !current[panel] };
+      try {
+        localStorage.setItem("topchamal-admin-collapsed-panels", JSON.stringify(next));
+      } catch {
+        /* Layout preferences are optional. */
+      }
+      return next;
+    });
+  }
+
+  function panelToggle(panel: string) {
+    const isCollapsed = !!collapsedPanels[panel];
+    return (
+      <button
+        type="button"
+        className="admin-collapse-button"
+        onClick={() => togglePanel(panel)}
+        aria-expanded={!isCollapsed}
+      >
+        <ChevronDown size={15} className={isCollapsed ? "is-collapsed" : ""} />
+        {isCollapsed ? "إظهار" : "إخفاء"}
+      </button>
+    );
+  }
 
   async function loadData() {
     setLoading(true);
@@ -480,7 +516,6 @@ function AdminProducts() {
   function saveAISettings() {
     window.localStorage.setItem("topchamal-ai-settings", JSON.stringify(aiSettings));
     setNotice("تم حفظ إعدادات التوليد بالذكاء الاصطناعي.");
-    setSettingsOpen(false);
   }
 
   async function assistBulkRow(index: number) {
@@ -766,15 +801,9 @@ function AdminProducts() {
               هذه الإعدادات تُحفظ لهذا المتصفح وتُستخدم في الإضافة الفردية والجماعية.
             </p>
           </div>
-          <button
-            type="button"
-            className="admin-secondary-button"
-            onClick={() => setSettingsOpen((open) => !open)}
-          >
-            <Sparkles size={15} /> {settingsOpen ? "إخفاء الإعدادات" : "فتح الإعدادات"}
-          </button>
+          {panelToggle("ai-settings")}
         </div>
-        {settingsOpen && (
+        {!collapsedPanels["ai-settings"] && (
           <div className="ai-settings-grid">
             <label>
               <span>لغة الوصف والوسوم</span>
@@ -859,8 +888,9 @@ function AdminProducts() {
               شيء قبل النشر.
             </p>
           </div>
-          <Sparkles size={22} color="#c27b42" />
+          {panelToggle("copilot")}
         </div>
+        {!collapsedPanels["copilot"] && <>
         <div className="copilot-chat">
           <div className="copilot-message">
             ما اسم المنتج؟ وما العلامة التجارية والتصنيف والسعر والمخزون؟ يمكنك إضافة ملاحظات قصيرة
@@ -968,6 +998,7 @@ function AdminProducts() {
             مسح المحادثة
           </button>
         </div>
+        </>}
       </section>
 
       <section className="dashboard-panel catalog-manager-panel">
@@ -979,7 +1010,9 @@ function AdminProducts() {
               أنشئ تصنيفات جديدة، ثم اخترها لكل منتج أثناء الإضافة الجماعية أو التعديل.
             </p>
           </div>
+          {panelToggle("catalog")}
         </div>
+        {!collapsedPanels["catalog"] && <>
         <div className="admin-form-grid">
           <label>
             <span>اسم الكتالوج</span>
@@ -1040,6 +1073,7 @@ function AdminProducts() {
             </span>
           ))}
         </div>
+        </>}
       </section>
 
       <section className="dashboard-panel bulk-products-panel">
@@ -1065,7 +1099,9 @@ function AdminProducts() {
               {bulkProgress || (bulkSaving ? "جار الحفظ..." : "حفظ الكل")}
             </button>
           </div>
+          {panelToggle("bulk")}
         </div>
+        {!collapsedPanels["bulk"] && <>
         <div className="bulk-import">
           <textarea
             value={bulkText}
@@ -1190,6 +1226,7 @@ function AdminProducts() {
           <Sparkles size={13} /> OpenAI يولّد الوصف والوسوم والرابط، وتبقى كل الاقتراحات قابلة
           للمراجعة قبل الحفظ.
         </small>
+        </>}
       </section>
 
       <form className="dashboard-panel admin-form-panel" onSubmit={saveProduct}>

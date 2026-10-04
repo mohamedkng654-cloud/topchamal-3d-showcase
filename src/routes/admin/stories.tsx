@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Clock3, Edit3, ImagePlus, Pause, Play, Trash2, Video, X } from "lucide-react";
+import { ChevronDown, Clock3, Edit3, ImagePlus, Pause, Play, Trash2, Video, X } from "lucide-react";
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import {
   deleteLocalStory,
@@ -67,6 +67,8 @@ function AdminStories() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [formOpen, setFormOpen] = useState(true);
+  const [listOpen, setListOpen] = useState(true);
 
   function refresh() {
     setStories(getLocalStories());
@@ -178,8 +180,9 @@ function AdminStories() {
             <span className="admin-eyebrow">{editingId ? "تعديل القصة" : "قصة جديدة"}</span>
             <h3>{editingId ? "تعديل المحتوى والمدة" : "أضف قصة أو عرضاً"}</h3>
           </div>
-          {editingId && <button type="button" className="admin-icon-button" onClick={reset}><X size={16} /></button>}
+          <div className="panel-heading-actions">{editingId && <button type="button" className="admin-icon-button" onClick={reset}><X size={16} /></button>}<button type="button" className="admin-collapse-button" onClick={() => setFormOpen((open) => !open)} aria-expanded={formOpen}><ChevronDown size={15} className={formOpen ? "" : "is-collapsed"} />{formOpen ? "إخفاء" : "إظهار"}</button></div>
         </div>
+        {formOpen && <>
         <div className="story-form-grid">
           <label className="story-media-picker">
             <span className="story-media-preview">
@@ -207,11 +210,12 @@ function AdminStories() {
           <button className="admin-primary-button" type="submit">{editingId ? <Edit3 size={16} /> : <Play size={16} />}{editingId ? "حفظ التعديل" : "نشر القصة"}</button>
           {editingId && <button className="admin-secondary-button" type="button" onClick={reset}>إلغاء</button>}
         </div>
+        </>}
       </form>
 
       <div className="dashboard-panel admin-table-panel">
-        <div className="panel-heading"><div><span className="admin-eyebrow">إدارة القصص</span><h3>{stories.length} قصة محفوظة</h3></div><small className="story-local-note">تُحفظ محلياً في هذا المتصفح</small></div>
-        {!stories.length ? <p className="admin-state">لا توجد قصص بعد. أضف أول قصة أو عرض من النموذج أعلاه.</p> : (
+        <div className="panel-heading"><div><span className="admin-eyebrow">إدارة القصص</span><h3>{stories.length} قصة محفوظة</h3></div><div className="panel-heading-actions"><small className="story-local-note">تُحفظ محلياً في هذا المتصفح</small><button type="button" className="admin-collapse-button" onClick={() => setListOpen((open) => !open)} aria-expanded={listOpen}><ChevronDown size={15} className={listOpen ? "" : "is-collapsed"} />{listOpen ? "إخفاء" : "إظهار"}</button></div></div>
+        {listOpen && (!stories.length ? <p className="admin-state">لا توجد قصص بعد. أضف أول قصة أو عرض من النموذج أعلاه.</p> : (
           <div className="story-list">
             {stories.map((story) => {
               const expired = !!story.expires_at && new Date(story.expires_at).getTime() <= Date.now();
@@ -222,7 +226,7 @@ function AdminStories() {
               </article>;
             })}
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
