@@ -41,6 +41,7 @@ const durationLabels: Record<StoryDuration, string> = {
   "72h": "72 ساعة",
   until_deleted: "حتى أحذفها أو أوقفها",
 };
+const MAX_STORY_FILE_SIZE = 20 * 1024 * 1024;
 
 function toForm(story: LocalStory): StoryForm {
   return {
@@ -82,8 +83,8 @@ function AdminStories() {
   function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (file.size > 8 * 1024 * 1024) {
-      setError("حجم الملف كبير. اختر صورة أو فيديو أقل من 8 ميغابايت.");
+    if (file.size > MAX_STORY_FILE_SIZE) {
+      setError("حجم الملف كبير. اختر صورة أو فيديو أقل من 20 ميغابايت.");
       return;
     }
     const reader = new FileReader();
@@ -191,7 +192,7 @@ function AdminStories() {
               ) : <ImagePlus size={32} />}
             </span>
             <strong>{form.media_url ? "تغيير الصورة أو الفيديو" : "اختر صورة أو فيديو"}</strong>
-            <small>حتى 8 ميغابايت · JPG, PNG, WEBP, MP4</small>
+            <small>حتى 20 ميغابايت · JPG, PNG, WEBP, MP4</small>
             <input type="file" accept="image/*,video/*" onChange={handleFile} />
           </label>
           <div className="story-fields">
