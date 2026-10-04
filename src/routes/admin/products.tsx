@@ -408,16 +408,17 @@ function AdminProducts() {
     event.preventDefault();
     setError("");
     setNotice("");
-    if (!form.name.trim() || !form.slug.trim() || !form.price_mad) {
-      setError("أدخل اسم المنتج والرابط والسعر قبل الحفظ.");
+    if (!form.name.trim()) {
+      setError("أدخل اسم المنتج قبل الحفظ.");
       return;
     }
+    const generatedSlug = slugify(form.slug || form.name);
     const price = Number(form.price_mad);
     const discount = form.discount_price_mad ? Number(form.discount_price_mad) : null;
     const stock = Number(form.stock || 0);
     if (
       !Number.isFinite(price) ||
-      price < 0 ||
+      (!form.price_mad ? false : price < 0) ||
       (discount !== null && (!Number.isFinite(discount) || discount < 0))
     ) {
       setError("تحقق من قيم الأسعار.");
@@ -430,16 +431,16 @@ function AdminProducts() {
     setSaving(true);
     const payload = {
       name: form.name.trim(),
-      slug: form.slug.trim().toLowerCase().replace(/\s+/g, "-"),
+      slug: generatedSlug || `product-${Date.now()}`,
       description: form.description.trim() || null,
-      price_mad: price,
+      price_mad: form.price_mad ? price : 0,
       discount_price_mad: discount,
       category_id: form.category_id || null,
       image_urls: form.image_url.trim() ? [form.image_url.trim()] : [],
       stock,
       sku: form.sku.trim() || null,
       brand: form.brand.trim() || null,
-      status: form.status,
+      status: form.price_mad ? form.status : "draft",
       is_featured: form.is_featured,
       tags: form.tags
         .split(",")
@@ -450,7 +451,13 @@ function AdminProducts() {
     if (!supabaseConfigured) {
       upsertLocalProduct(editingId ? { ...payload, id: editingId } : payload);
       setSaving(false);
-      setNotice(editingId ? "تم تحديث المنتج بنجاح." : "تمت إضافة المنتج بنجاح.");
+      setNotice(
+        editingId
+          ? "تم تحديث المنتج بنجاح."
+          : form.price_mad
+            ? "تمت إضافة المنتج بنجاح."
+            : "تم حفظ المنتج كمسودة. يمكنك إضافة السعر لاحقاً.",
+      );
       if (!editingId) setForm(emptyForm);
       setEditingId(null);
       await loadData();
@@ -464,7 +471,13 @@ function AdminProducts() {
       setError(result.error.message);
       return;
     }
-    setNotice(editingId ? "تم تحديث المنتج بنجاح." : "تمت إضافة المنتج بنجاح.");
+    setNotice(
+      editingId
+        ? "تم تحديث المنتج بنجاح."
+        : form.price_mad
+          ? "تمت إضافة المنتج بنجاح."
+          : "تم حفظ المنتج كمسودة. يمكنك إضافة السعر لاحقاً.",
+    );
     if (!editingId) setForm(emptyForm);
     setEditingId(null);
     await loadData();
