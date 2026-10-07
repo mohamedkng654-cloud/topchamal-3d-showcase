@@ -15,15 +15,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
-import {
-  getLocalCategories,
-  getLocalProducts,
-  CATALOG_EMPTY,
-  deleteLocalProduct,
-  upsertLocalProduct,
-  upsertLocalCategory,
-  deleteLocalCategory,
-} from "@/lib/local-store";
+import { CATALOG_EMPTY } from "@/lib/local-store";
 import { generateProductMetadata } from "@/lib/admin-ai.functions";
 
 export const Route = createFileRoute("/admin/products")({ component: AdminProducts });
@@ -256,8 +248,9 @@ function AdminProducts() {
       return;
     }
     if (!supabaseConfigured) {
-      setProducts(getLocalProducts() as Product[]);
-      setCategories(getLocalCategories());
+      setProducts([]);
+      setCategories([]);
+      setError("لا يمكن حفظ تغييرات الكتالوج بشكل مشترك حتى يتم ربط Supabase.");
       setLoading(false);
       return;
     }
@@ -383,16 +376,24 @@ function AdminProducts() {
       setError("أدخل اسم الكتالوج.");
       return;
     }
-    if (supabaseConfigured) {
-      setError("إدارة الكتالوجات متاحة حالياً في الوضع المحلي فقط.");
+    if (!supabaseConfigured) {
+      setError("لا يمكن حفظ الكتالوجات بشكل مشترك حتى يتم ربط Supabase.");
       return;
     }
-    upsertLocalCategory(name, slug, editingCategoryId || undefined);
-    setCategories(getLocalCategories());
+    const result = editingCategoryId
+      ? await supabase.from("categories").update({ name, slug }).eq("id", editingCategoryId)
+      : await supabase.from("categories").insert({ name, slug, is_active: true });
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
     setCatalogName("");
     setCatalogSlug("");
     setEditingCategoryId(null);
-    setNotice(editingCategoryId ? "تم تحديث الكتالوج." : "تمت إضافة الكتالوج.");
+    setNotice(
+      editingCategoryId ? "تم تحديث الكتالوج لجميع الزوار." : "تمت إضافة الكتالوج لجميع الزوار.",
+    );
+    await loadData();
   }
 
   function editCatalog(category: Category) {
@@ -403,13 +404,16 @@ function AdminProducts() {
 
   function removeCatalog(category: Category) {
     if (!window.confirm(`حذف الكتالوج «${category.name}»؟`)) return;
-    if (supabaseConfigured) {
-      setError("إدارة الكتالوجات متاحة حالياً في الوضع المحلي فقط.");
+    if (!supabaseConfigured) {
+      setError("لا يمكن حذف الكتالوجات بشكل مشترك حتى يتم ربط Supabase.");
       return;
     }
-    deleteLocalCategory(category.id);
-    setCategories(getLocalCategories());
-    setNotice("تم حذف الكتالوج.");
+    const result = await supabase.from("categories").delete().eq("id", category.id);
+    if (result.error) setError(result.error.message);
+    else {
+      setNotice("تم حذف الكتالوج لجميع الزوار.");
+      await loadData();
+    }
   }
 
   async function saveProduct(event: FormEvent<HTMLFormElement>) {
@@ -457,18 +461,8 @@ function AdminProducts() {
         .slice(0, 12),
     };
     if (!supabaseConfigured) {
-      upsertLocalProduct(editingId ? { ...payload, id: editingId } : payload);
       setSaving(false);
-      setNotice(
-        editingId
-          ? "تم تحديث المنتج بنجاح."
-          : form.price_mad
-            ? "تمت إضافة المنتج بنجاح."
-            : "تم حفظ المنتج كمسودة. يمكنك إضافة السعر لاحقاً.",
-      );
-      if (!editingId) setForm(emptyForm);
-      setEditingId(null);
-      await loadData();
+      setError("لا يمكن حفظ المنتجات بشكل مشترك حتى يتم ربط Supabase.");
       return;
     }
     const result = editingId
@@ -703,12 +697,9 @@ function AdminProducts() {
     const chunkSize = 100;
     const totalChunks = Math.ceil(payload.length / chunkSize);
     if (!supabaseConfigured) {
-      payload.forEach((item) => upsertLocalProduct(item));
       setBulkSaving(false);
       setBulkProgress("");
-      setNotice(`${payload.length} منتج جاهز. المنتجات بدون سعر بقيت كمسودات حتى تكمل بياناتها.`);
-      setBulkRows(Array.from({ length: 5 }, emptyBulkRow));
-      await loadData();
+      setError("لا يمكن حفظ المنتجات بشكل مشترك حتى يتم ربط Supabase.");
       return;
     }
     for (let index = 0; index < payload.length; index += chunkSize) {
@@ -732,11 +723,7 @@ function AdminProducts() {
 
   async function setStock(product: Product, stock: number) {
     if (!supabaseConfigured) {
-      upsertLocalProduct({ ...product, stock });
-      setNotice(stock === 0 ? "تم وضع المنتج خارج المخزون." : "تم تحديث المخزون.");
-      setProducts((current) =>
-        current.map((item) => (item.id === product.id ? { ...item, stock } : item)),
-      );
+      setError("لا يمكن تحديث المخزون بشكل مشترك حتى يتم ربط Supabase.");
       return;
     }
     const result = await productsTable().update({ stock }).eq("id", product.id);
@@ -751,11 +738,7 @@ function AdminProducts() {
 
   async function archiveProduct(product: Product) {
     if (!supabaseConfigured) {
-      upsertLocalProduct({ ...product, status: "archived" });
-      setNotice("تم نقل المنتج إلى التخزين/الأرشيف.");
-      setProducts((current) =>
-        current.map((item) => (item.id === product.id ? { ...item, status: "archived" } : item)),
-      );
+      setError("لا يمكن أرشفة المنتجات بشكل مشترك حتى يتم ربط Supabase.");
       return;
     }
     const result = await supabase
@@ -775,10 +758,7 @@ function AdminProducts() {
     if (!window.confirm(`حذف المنتج «${product.name}» نهائياً؟`)) return;
     setError("");
     if (!supabaseConfigured) {
-      deleteLocalProduct(product.id);
-      setNotice("تم حذف المنتج.");
-      setProducts((current) => current.filter((item) => item.id !== product.id));
-      if (editingId === product.id) startCreate();
+      setError("لا يمكن حذف المنتجات بشكل مشترك حتى يتم ربط Supabase.");
       return;
     }
     const result = await productsTable().delete().eq("id", product.id);
