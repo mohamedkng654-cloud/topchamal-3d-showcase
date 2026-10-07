@@ -1,6 +1,13 @@
 import { supabase, supabaseConfigured } from "./supabase";
 import { CATALOG_EMPTY, getLocalProducts } from "./local-store";
 
+export type StorefrontCategory = {
+  id: string;
+  label: string;
+  fr: string;
+  sort_order: number;
+};
+
 export type StorefrontProduct = {
   id: string;
   name: string;
@@ -26,6 +33,27 @@ type CatalogRow = {
 };
 
 const fallbackImage = "/favicon.png";
+
+export async function loadStorefrontCategories(
+  fallback: StorefrontCategory[],
+): Promise<StorefrontCategory[]> {
+  if (!supabaseConfigured) return fallback;
+  const { data, error } = await supabase
+    .from("categories")
+    .select("slug,name,sort_order")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  if (error || !data) {
+    console.error("[Storefront] Could not load shared categories", error);
+    return fallback;
+  }
+  return (data as Array<{ slug: string; name: string; sort_order: number }>).map((row) => ({
+    id: row.slug,
+    label: row.name,
+    fr: row.slug.replace(/[-_]+/g, " ").toUpperCase(),
+    sort_order: row.sort_order,
+  }));
+}
 
 function mapProduct(row: CatalogRow): StorefrontProduct {
   const category = Array.isArray(row.categories) ? row.categories[0]?.slug : row.categories?.slug;

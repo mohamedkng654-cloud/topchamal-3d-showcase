@@ -26,8 +26,10 @@ import catalog from "../data/products.json";
 import { categories } from "../data/categories";
 import {
   createStorefrontOrder,
+  loadStorefrontCategories,
   loadStorefrontProducts,
   subscribeToStorefrontCatalog,
+  type StorefrontCategory,
   type StorefrontProduct,
 } from "@/lib/storefront";
 import { defaultSiteSettings, getActiveLocalStories, getLocalSiteSettings, pullSiteContent, subscribeToSiteContent, type LocalStory } from "@/lib/local-store";
@@ -39,7 +41,6 @@ type CartLine = { id: string; quantity: number };
 const fallbackProducts = catalog.products as Product[];
 const formatPrice = (n: number) =>
   new Intl.NumberFormat("fr-MA", { maximumFractionDigits: 2 }).format(n);
-const categoryName = (id: string) => categories.find((c) => c.id === id)?.label || "أجهزة منزلية";
 const META =
   "اكتشف آلات القهوة، الخلاطات، العجانات وأجهزة المنزل من Topchamal. تشكيلة مختارة بأسعار الدرهم المغربي.";
 export const Route = createFileRoute("/")({
@@ -84,6 +85,7 @@ function PictureView({
 export function Storefront() {
   const [siteSettings, setSiteSettings] = useState(defaultSiteSettings);
   const [products, setProducts] = useState<Product[]>([]);
+  const [categoryList, setCategoryList] = useState<StorefrontCategory[]>(categories);
   const [scrolled, setScrolled] = useState(false);
   const [orderError, setOrderError] = useState("");
   const [orderSubmitting, setOrderSubmitting] = useState(false);
@@ -98,10 +100,14 @@ export function Storefront() {
   const [now, setNow] = useState(0);
   const [stories, setStories] = useState<LocalStory[]>([]);
   const [storyViewerIndex, setStoryViewerIndex] = useState<number | null>(null);
+  const categoryName = (id: string) =>
+    categoryList.find((category) => category.id === id)?.label || "أجهزة منزلية";
   const productRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const refreshProducts = () => { void loadStorefrontProducts(fallbackProducts).then(setProducts); };
+    const refreshCategories = () => { void loadStorefrontCategories(categories).then(setCategoryList); };
     refreshProducts();
+    refreshCategories();
     try {
       const value = JSON.parse(localStorage.getItem("topchamal-cart") || "[]");
       if (Array.isArray(value))
@@ -121,7 +127,10 @@ export function Storefront() {
       setStories(getActiveLocalStories());
       setSiteSettings(getLocalSiteSettings());
     });
-    const unsubscribeCatalog = subscribeToStorefrontCatalog(refreshProducts);
+    const unsubscribeCatalog = subscribeToStorefrontCatalog(() => {
+      refreshProducts();
+      refreshCategories();
+    });
     const unsubscribeContent = subscribeToSiteContent(() => {
       setStories(getActiveLocalStories());
       setSiteSettings(getLocalSiteSettings());
@@ -501,7 +510,7 @@ export function Storefront() {
             </p>
           </div>
           <div className="category-grid">
-            {categories.map((c, i) => (
+            {categoryList.map((c, i) => (
               <button
                 key={c.id}
                 className={`category-item reveal ${active === c.id ? "active" : ""}`}
@@ -596,7 +605,7 @@ export function Storefront() {
             >
               جميع المنتجات
             </Button>
-            {categories.map((c) => (
+            {categoryList.map((c) => (
               <Button
                 key={c.id}
                 className={`filter-btn ${active === c.id ? "active" : ""}`}
