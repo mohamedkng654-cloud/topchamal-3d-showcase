@@ -76,3 +76,8 @@
 .story-price del { color: #c7cbd2; font-size: 11px; font-weight: 500; }
 .story-viewer-info .story-offer { justify-self: start; }
 @media (max-width: 640px) { .stories-section { padding: 27px 0 15px; } .stories-heading-note { display: none; } .stories-strip { gap: 15px; } .story-card { width: 82px; flex-basis: 82px; } .story-ring { width: 78px; height: 78px; } .story-card-label { width: 82px; font-size: 10px; } .story-play { top: 51px; left: 2px; width: 23px; height: 23px; } .story-viewer-shell { width: 100vw; height: 100vh; border-radius: 0; } .story-nav { width: 32px; height: 32px; } }
+
+/* Brand refresh */
+.footer .brand { display: inline-flex; align-items: center; }
+.footer-logo { display: block; width: 150px; height: 99px; object-fit: cover; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 10px 24px color-mix(in oklab, var(--background) 22%, transparent); }
+@media (max-width: 700px) { .footer-logo { width: 126px; height: 83px; } }

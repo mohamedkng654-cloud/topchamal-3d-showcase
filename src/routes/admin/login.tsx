@@ -35,7 +35,7 @@ function AdminLogin() {
       </div>
       <section className="login-card">
         <div className="login-logo">
-          <span>T</span>
+          <img src="/topchamal-logo.jpg" width="160" height="106" alt="TopChamal Premium Moroccan Cookware" />
         </div>
         <span className="admin-eyebrow">TOPCHAMAL ADMIN</span>
         <h1>مرحباً بعودتك</h1>

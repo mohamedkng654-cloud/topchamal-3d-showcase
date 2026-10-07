@@ -743,8 +743,7 @@ export function Storefront() {
           <div className="footer-grid">
             <div>
               <a className="brand" href="/">
-                top<span>chamal</span>
-                <span className="brand-dot">.</span>
+                <img className="footer-logo" src={brandLogo} width="150" height="99" alt="TopChamal Premium Moroccan Cookware" />
               </a>
               <p>{siteSettings.footerDescription}</p>
             </div>

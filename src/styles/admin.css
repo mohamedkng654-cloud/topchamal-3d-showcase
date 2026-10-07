@@ -1274,3 +1274,8 @@
   .story-admin-media { height: 58px; }
   .story-admin-card .admin-row-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
+
+/* Brand refresh */
+.admin-brand-logo { width: 58px; height: 38px; display: block; border-radius: 8px; object-fit: cover; border: 1px solid rgba(226, 191, 130, 0.5); }
+.login-logo img { width: 160px; height: 106px; display: block; border-radius: 12px; object-fit: cover; border: 1px solid #dfbd83; box-shadow: 0 12px 28px rgba(20, 33, 58, 0.14); }
+@media (max-width: 700px) { .login-logo img { width: 142px; height: 94px; } }

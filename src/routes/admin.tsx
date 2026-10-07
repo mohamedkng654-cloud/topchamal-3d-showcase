@@ -62,7 +62,7 @@ function AdminLayout() {
     <div className="admin-shell" dir="rtl">
       <aside className="admin-sidebar">
         <div className="admin-brand">
-          <span className="admin-brand-mark">T</span>
+          <img className="admin-brand-logo" src="/topchamal-logo.jpg" width="58" height="38" alt="TopChamal" />
           <div>
             <strong>TopChamal</strong>
             <small>لوحة الإدارة</small>
