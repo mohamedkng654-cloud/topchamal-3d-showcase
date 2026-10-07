@@ -100,6 +100,8 @@ export function Storefront() {
   const [now, setNow] = useState(0);
   const [stories, setStories] = useState<LocalStory[]>([]);
   const [storyViewerIndex, setStoryViewerIndex] = useState<number | null>(null);
+  const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
+  const holdTimer = useRef<number | null>(null);
   const categoryName = (id: string) =>
     categoryList.find((category) => category.id === id)?.label || "أجهزة منزلية";
   const productRef = useRef<HTMLElement>(null);
@@ -167,6 +169,18 @@ export function Storefront() {
     }, 6500);
     return () => window.clearTimeout(timer);
   }, [storyViewerIndex, stories.length]);
+  useEffect(() => {
+    if (!previewProduct) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPreviewProduct(null);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [previewProduct]);
   useEffect(() => {
     if (!loaded) return;
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -256,6 +270,19 @@ export function Storefront() {
     });
     setDrawer(true);
     setCheckout(false);
+  }
+  function clearHoldTimer() {
+    if (holdTimer.current !== null) {
+      window.clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  }
+  function startProductHold(p: Product) {
+    clearHoldTimer();
+    holdTimer.current = window.setTimeout(() => {
+      setPreviewProduct(p);
+      holdTimer.current = null;
+    }, 420);
   }
   function qty(id: string, d: number) {
     setCart((c) =>
@@ -629,7 +656,16 @@ export function Storefront() {
                     }
                   }}
                 >
-                  <div className="product-photo">
+                  <div
+                    className="product-photo"
+                    onPointerDown={(event) => {
+                      if (event.pointerType !== "mouse") startProductHold(p);
+                    }}
+                    onPointerUp={clearHoldTimer}
+                    onPointerCancel={clearHoldTimer}
+                    onPointerLeave={clearHoldTimer}
+                    title="اضغط مطولاً لمعاينة المنتج"
+                  >
                     {p.oldPrice && (
                       <span className="badge">
                         -{Math.round((1 - p.price / p.oldPrice) * 100)}%
@@ -644,6 +680,7 @@ export function Storefront() {
                           event.currentTarget.src = "/topchamal-logo.jpg";
                       }}
                     />
+                    <span className="product-hold-hint">اضغط مطولاً للمعاينة</span>
                   </div>
                   <div className="product-info">
                     <span className="tag">{categoryName(p.category)}</span>
@@ -809,6 +846,22 @@ export function Storefront() {
           </div>
         </div>
       </footer>
+      {previewProduct && (
+        <div className="product-preview" role="dialog" aria-modal="true" aria-label={`معاينة ${previewProduct.name}`}>
+          <button type="button" className="product-preview-backdrop" onClick={() => setPreviewProduct(null)} aria-label="إغلاق المعاينة" />
+          <div className="product-preview-card">
+            <Button className="product-preview-close icon-btn" size="icon" onClick={() => setPreviewProduct(null)} aria-label="إغلاق المعاينة"><X size={19} /></Button>
+            <div className="product-preview-image"><img src={previewProduct.image} alt={previewProduct.name} /></div>
+            <div className="product-preview-copy">
+              <span className="tag">{categoryName(previewProduct.category)}</span>
+              <h2>{previewProduct.name}</h2>
+              <p>{previewProduct.description}</p>
+              <strong className="product-preview-price"><span className="num">{formatPrice(previewProduct.price)}</span> <small>د.م</small></strong>
+              <Button className="btn btn-wide product-preview-add" onClick={() => { add(previewProduct); setPreviewProduct(null); }}><Plus size={18} /> أضف مباشرة إلى السلة</Button>
+            </div>
+          </div>
+        </div>
+      )}
       <Button
         className="whatsapp-float"
         aria-label="التواصل مع TopChamal عبر واتساب"
