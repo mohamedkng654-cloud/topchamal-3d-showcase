@@ -149,6 +149,7 @@ function AdminStories() {
   const [videoEnd, setVideoEnd] = useState(0);
   const [videoScale, setVideoScale] = useState("0.75");
   const [mediaProcessing, setMediaProcessing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   function refresh() {
     setStories(getLocalStories());
@@ -164,6 +165,10 @@ function AdminStories() {
     if (!file) return;
     if (file.size > MAX_STORY_FILE_SIZE) {
       setError("حجم الملف كبير. اختر صورة أو فيديو أقل من 20 ميغابايت.");
+      return;
+    }
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      setError("اختر صورة أو فيديو صالحاً للقصة.");
       return;
     }
     setError("");
@@ -252,6 +257,7 @@ function AdminStories() {
 
   async function save(event: FormEvent) {
     event.preventDefault();
+    if (saving) return;
     setNotice("");
     setError("");
     if (!form.media_url) {
@@ -267,8 +273,10 @@ function AdminStories() {
       return;
     }
     const existing = editingId ? stories.find((story) => story.id === editingId) : undefined;
+    setSaving(true);
+    setNotice("جاري نشر القصة لجميع الزوار…");
     try {
-    const saved = await upsertLocalStory({
+      const saved = await upsertLocalStory({
       ...(editingId ? { id: editingId } : {}),
       media_type: form.media_type,
       media_url: form.media_url,
@@ -286,11 +294,13 @@ function AdminStories() {
           ? existing.expires_at
           : expiryFor(form.duration),
     });
-    refresh();
-    reset();
-    setNotice(saved.is_active ? "تم نشر القصة بنجاح." : "تم حفظ القصة.");
+      refresh();
+      reset();
+      setNotice(saved.is_active ? "تم نشر القصة بنجاح لجميع الزوار." : "تم حفظ القصة.");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "تعذر نشر القصة لجميع الزوار.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -382,7 +392,7 @@ function AdminStories() {
           </div>
         </div>
         <div className="admin-form-actions">
-          <button className="admin-primary-button" type="submit" disabled={mediaProcessing || !!selectedFile}>{editingId ? <Edit3 size={16} /> : <Play size={16} />}{mediaProcessing ? "جاري تجهيز الوسائط..." : editingId ? "حفظ التعديل" : "نشر القصة"}</button>
+          <button className="admin-primary-button" type="submit" disabled={mediaProcessing || saving || !!selectedFile}>{editingId ? <Edit3 size={16} /> : <Play size={16} />}{mediaProcessing ? "جاري تجهيز الوسائط..." : saving ? "جاري النشر..." : editingId ? "حفظ التعديل" : "نشر القصة"}</button>
           {editingId && <button className="admin-secondary-button" type="button" onClick={reset}>إلغاء</button>}
         </div>
         </>}

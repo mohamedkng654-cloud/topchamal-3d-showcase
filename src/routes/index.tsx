@@ -471,10 +471,10 @@ export function Storefront() {
       {stories.length > 0 && (
         <section className="stories-section" aria-label="قصص وعروض Topchamal">
           <div className="wrap">
-            <div className="stories-heading"><div><span className="eyebrow">TOPCHAMAL STORIES</span><h2 className="section-heading">آخر العروض والقصص</h2></div><span className="stories-heading-note">اضغط على أي قصة للتصفح مثل Instagram</span></div>
+            <div className="stories-heading"><div><span className="eyebrow">TOPCHAMAL STORIES</span><h2 className="section-heading">آخر العروض والقصص</h2></div><div className="stories-heading-side"><span className="stories-live-badge"><i /> جديد الآن</span><span className="stories-heading-note">اضغط على أي قصة للتصفح مثل Instagram</span></div></div>
             <div className="stories-strip">
               {stories.map((story, index) => <button className="story-card" key={story.id} type="button" onClick={() => setStoryViewerIndex(index)} aria-label={`فتح قصة ${story.title}`}>
-                <span className="story-ring"><span className="story-media">{story.media_type === "video" ? <video src={story.media_url} muted playsInline /> : <img src={story.media_url} alt="" />}</span></span>
+                <span className="story-ring"><span className="story-media">{story.media_type === "video" ? <video src={story.media_url} muted playsInline preload="metadata" /> : <img src={story.media_url} alt="" loading={index === 0 ? "eager" : "lazy"} decoding="async" />}</span></span>
                 <span className="story-card-label">{story.title}</span>
                 {story.media_type === "video" && <span className="story-play"><Play size={14} fill="currentColor" /></span>}
               </button>)}

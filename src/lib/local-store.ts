@@ -307,21 +307,22 @@ export async function upsertLocalStory(
     created_at: story.created_at || new Date().toISOString(),
   };
   const index = stories.findIndex((item) => item.id === saved.id);
-  if (index >= 0) stories[index] = saved;
-  else stories.unshift(saved);
-  write(STORIES_KEY, stories);
-  await pushCloud(STORIES_KEY, stories);
+  const nextStories = [...stories];
+  if (index >= 0) nextStories[index] = saved;
+  else nextStories.unshift(saved);
+  await pushCloud(STORIES_KEY, nextStories);
+  write(STORIES_KEY, nextStories);
   return saved;
 }
 export async function updateLocalStory(idValue: string, patch: Partial<LocalStory>): Promise<void> {
   const stories = getLocalStories().map((story) => (story.id === idValue ? { ...story, ...patch } : story));
-  write(STORIES_KEY, stories);
   await pushCloud(STORIES_KEY, stories);
+  write(STORIES_KEY, stories);
 }
 export async function deleteLocalStory(idValue: string): Promise<void> {
   const stories = getLocalStories().filter((story) => story.id !== idValue);
-  write(STORIES_KEY, stories);
   await pushCloud(STORIES_KEY, stories);
+  write(STORIES_KEY, stories);
 }
 export function getLocalOrders(): LocalOrder[] {
   return read<LocalOrder[]>(ORDERS_KEY, []).map((order, index) => ({
