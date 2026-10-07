@@ -1,5 +1,15 @@
 {
-  "products": [],
+  "products": [
+    {
+      "id": "bonana-pn66-blender",
+      "name": "Bonana PN-66 Mixeur / Mélangeur 2 en 1",
+      "category": "blender",
+      "price": 249,
+      "oldPrice": null,
+      "description": "Mixeur Bonana PN-66 avec bol en verre de 1,5 L, cinq vitesses, fonction ice crush, lames en acier inoxydable et moulin à café.",
+      "image": "/bonana-pn66.jpg"
+    }
+  ],
   "categoryImages": {
     "blender": "/__l5e/assets-v1/ca270b94-7269-4666-8db5-1ceba3ba8245/cat-blender.webp",
     "robot-cuiseur": "/__l5e/assets-v1/10fe1da7-c049-416f-88a5-ff8e97654c90/cat-robot-cuiseur.webp",

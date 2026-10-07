@@ -37,7 +37,7 @@ const SETTINGS_KEY = "topchamal-local-site-settings";
 const STORIES_KEY = "topchamal-local-stories";
 const CATALOG_SEEDED_KEY = "topchamal-local-catalog-seeded-v1";
 /** All products were intentionally removed globally. */
-export const CATALOG_EMPTY = true;
+export const CATALOG_EMPTY = false;
 
 type LocalProduct = {
   id: string;
