@@ -144,7 +144,7 @@ const emptyForm: ProductForm = {
 };
 
 const money = (value: number) => `${Number(value || 0).toLocaleString("fr-MA")} د.م`;
-const productsTable = (): any => supabase.from("products");
+const productsTable = () => supabase.from("products");
 const statusLabels: Record<ProductStatus, string> = {
   draft: "مسودة",
   published: "منشور",
@@ -369,7 +369,7 @@ function AdminProducts() {
       .catch(() => setError("تعذر تجهيز الصورة."));
   }
 
-  function saveCatalog() {
+  async function saveCatalog() {
     const name = catalogName.trim();
     const slug = slugify(catalogSlug || name);
     if (!name || !slug) {
@@ -402,7 +402,7 @@ function AdminProducts() {
     setCatalogSlug(category.slug);
   }
 
-  function removeCatalog(category: Category) {
+  async function removeCatalog(category: Category) {
     if (!window.confirm(`حذف الكتالوج «${category.name}»؟`)) return;
     if (!supabaseConfigured) {
       setError("لا يمكن حذف الكتالوجات بشكل مشترك حتى يتم ربط Supabase.");
