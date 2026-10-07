@@ -82,7 +82,7 @@ function PictureView({
 }
 export function Storefront() {
   const [siteSettings, setSiteSettings] = useState(defaultSiteSettings);
-  const [products, setProducts] = useState<Product[]>(fallbackProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [scrolled, setScrolled] = useState(false);
   const [orderError, setOrderError] = useState("");
   const [orderSubmitting, setOrderSubmitting] = useState(false);
