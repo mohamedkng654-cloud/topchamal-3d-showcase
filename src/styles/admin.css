@@ -563,6 +563,14 @@
   .admin-top-actions a svg {
     margin: 0;
   }
+  .admin-top-actions .admin-sync-button {
+    width: 36px;
+    padding: 9px;
+    font-size: 0;
+  }
+  .admin-top-actions .admin-sync-button svg {
+    margin: 0;
+  }
   .metric-grid {
     grid-template-columns: repeat(2, 1fr);
   }

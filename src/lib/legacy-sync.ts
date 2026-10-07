@@ -65,6 +65,14 @@ export async function migrateLegacyLocalAdminData(
   if (categoryRows.length) {
     const result = await supabase.from("categories").upsert(categoryRows, { onConflict: "slug" });
     if (result.error) throw result.error;
+    const verification = await supabase
+      .from("categories")
+      .select("slug")
+      .in("slug", categoryRows.map((row) => row.slug));
+    if (verification.error) throw verification.error;
+    if ((verification.data || []).length < new Set(categoryRows.map((row) => row.slug)).size) {
+      throw new Error("تم الحفظ الجزئي للتصنيفات فقط. أعد المحاولة.");
+    }
     summary.categories = categoryRows.length;
   }
 
@@ -104,6 +112,14 @@ export async function migrateLegacyLocalAdminData(
   if (productRows.length) {
     const result = await supabase.from("products").upsert(productRows, { onConflict: "slug" });
     if (result.error) throw result.error;
+    const verification = await supabase
+      .from("products")
+      .select("slug")
+      .in("slug", productRows.map((row) => row.slug));
+    if (verification.error) throw verification.error;
+    if ((verification.data || []).length < new Set(productRows.map((row) => row.slug)).size) {
+      throw new Error("تم الحفظ الجزئي للمنتجات فقط. أعد المحاولة.");
+    }
     summary.products = productRows.length;
   }
 
@@ -114,6 +130,10 @@ export async function migrateLegacyLocalAdminData(
       updated_at: new Date().toISOString(),
     });
     if (result.error) throw result.error;
+    const verification = await supabase.from("site_content").select("key").eq("key", "site_settings").maybeSingle();
+    if (verification.error || !verification.data) {
+      throw verification.error || new Error("لم يتم تأكيد حفظ إعدادات الموقع.");
+    }
     summary.siteSettings = true;
   }
 
@@ -124,6 +144,10 @@ export async function migrateLegacyLocalAdminData(
       updated_at: new Date().toISOString(),
     });
     if (result.error) throw result.error;
+    const verification = await supabase.from("site_content").select("key").eq("key", "stories").maybeSingle();
+    if (verification.error || !verification.data) {
+      throw verification.error || new Error("لم يتم تأكيد حفظ القصص.");
+    }
     summary.stories = localStories.length;
   }
 
@@ -150,6 +174,14 @@ export async function migrateLegacyLocalAdminData(
   if (orderRows.length) {
     const result = await supabase.from("orders").upsert(orderRows, { onConflict: "order_number" });
     if (result.error) throw result.error;
+    const verification = await supabase
+      .from("orders")
+      .select("order_number")
+      .in("order_number", orderRows.map((row) => row.order_number));
+    if (verification.error) throw verification.error;
+    if ((verification.data || []).length < new Set(orderRows.map((row) => row.order_number)).size) {
+      throw new Error("تم الحفظ الجزئي للطلبات فقط. أعد المحاولة.");
+    }
     summary.orders = orderRows.length;
   }
 
