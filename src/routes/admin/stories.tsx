@@ -42,6 +42,77 @@ const durationLabels: Record<StoryDuration, string> = {
   until_deleted: "حتى أحذفها أو أوقفها",
 };
 const MAX_STORY_FILE_SIZE = 20 * 1024 * 1024;
+const TARGET_STORY_MEDIA_SIZE = 3.5 * 1024 * 1024;
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("تعذر قراءة الملف الناتج."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function compressStoryImage(file: File) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78));
+  if (!blob) throw new Error("تعذر ضغط الصورة.");
+  return { dataUrl: await blobToDataUrl(blob), size: blob.size, width: canvas.width, height: canvas.height };
+}
+
+async function renderStoryVideo(file: File, start: number, end: number, scale: number, bitrate: number) {
+  const sourceUrl = URL.createObjectURL(file);
+  const video = document.createElement("video");
+  video.src = sourceUrl;
+  video.muted = true;
+  video.playsInline = true;
+  await new Promise<void>((resolve, reject) => {
+    video.onloadedmetadata = () => resolve();
+    video.onerror = () => reject(new Error("تعذر قراءة الفيديو."));
+  });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(2, Math.round(video.videoWidth * scale));
+  canvas.height = Math.max(2, Math.round(video.videoHeight * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("المتصفح لا يدعم تجهيز الفيديو.");
+  const stream = canvas.captureStream(24);
+  const sourceStream = (video as HTMLVideoElement & { captureStream?: () => MediaStream }).captureStream?.();
+  sourceStream?.getAudioTracks().forEach((track: MediaStreamTrack) => stream.addTrack(track));
+  const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+    ? "video/webm;codecs=vp9"
+    : "video/webm";
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrate });
+  const chunks: Blob[] = [];
+  const result = await new Promise<Blob>((resolve, reject) => {
+    recorder.ondataavailable = (event) => event.data.size && chunks.push(event.data);
+    recorder.onerror = () => reject(new Error("تعذر ضغط الفيديو."));
+    recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
+    video.onseeked = () => {
+      recorder.start(250);
+      void video.play();
+      const draw = () => {
+        if (video.currentTime >= end || video.ended) {
+          recorder.stop();
+          video.pause();
+          return;
+        }
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        requestAnimationFrame(draw);
+      };
+      draw();
+    };
+    video.currentTime = Math.max(0, start);
+  });
+  stream.getTracks().forEach((track) => track.stop());
+  URL.revokeObjectURL(sourceUrl);
+  return result;
+}
 
 function toForm(story: LocalStory): StoryForm {
   return {
@@ -70,6 +141,13 @@ function AdminStories() {
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(true);
   const [listOpen, setListOpen] = useState(true);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState("");
+  const [mediaInfo, setMediaInfo] = useState<{ size: number; duration?: number; width?: number; height?: number } | null>(null);
+  const [videoStart, setVideoStart] = useState(0);
+  const [videoEnd, setVideoEnd] = useState(0);
+  const [videoScale, setVideoScale] = useState("0.75");
+  const [mediaProcessing, setMediaProcessing] = useState(false);
 
   function refresh() {
     setStories(getLocalStories());
@@ -80,29 +158,95 @@ function AdminStories() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function handleFile(event: ChangeEvent<HTMLInputElement>) {
+  async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_STORY_FILE_SIZE) {
       setError("حجم الملف كبير. اختر صورة أو فيديو أقل من 20 ميغابايت.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
+    setError("");
+    setNotice("");
+    setSelectedFile(null);
+    setMediaPreviewUrl("");
+    setMediaInfo(null);
+    if (file.type.startsWith("image/")) {
+      setMediaProcessing(true);
+      try {
+        const compressed = await compressStoryImage(file);
+        setForm((current) => ({ ...current, media_type: "image", media_url: compressed.dataUrl }));
+        setMediaPreviewUrl(compressed.dataUrl);
+        setMediaInfo(compressed);
+        setNotice(`تم ضغط الصورة وتجهيزها (${(compressed.size / 1048576).toFixed(1)} ميغابايت).`);
+      } catch (processingError) {
+        setError(processingError instanceof Error ? processingError.message : "تعذر تجهيز الصورة.");
+      } finally {
+        setMediaProcessing(false);
+      }
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.src = previewUrl;
+    video.onloadedmetadata = () => {
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      setSelectedFile(file);
+      setMediaPreviewUrl(previewUrl);
+      setMediaInfo({ size: file.size, duration, width: video.videoWidth, height: video.videoHeight });
+      setVideoStart(0);
+      setVideoEnd(duration);
       setForm((current) => ({
         ...current,
-        media_type: file.type.startsWith("video/") ? "video" : "image",
-        media_url: String(reader.result || ""),
+        media_type: "video",
+        media_url: "",
       }));
-      setError("");
+      setNotice("اضبط بداية ونهاية الفيديو ثم اضغط تجهيز الفيديو قبل النشر.");
     };
-    reader.readAsDataURL(file);
+    video.onerror = () => {
+      URL.revokeObjectURL(previewUrl);
+      setError("تعذر قراءة الفيديو. اختر ملف MP4 أو WebM صالحاً.");
+    };
+  }
+
+  async function prepareVideo() {
+    if (!selectedFile || !mediaInfo?.duration) return;
+    const start = Math.max(0, Math.min(videoStart, mediaInfo.duration - 0.5));
+    const end = Math.max(start + 0.5, Math.min(videoEnd || mediaInfo.duration, mediaInfo.duration));
+    setMediaProcessing(true);
+    setError("");
+    setNotice("جاري قص الفيديو وضغطه…");
+    try {
+      const duration = end - start;
+      const initialBitrate = Math.min(1_800_000, Math.max(320_000, (TARGET_STORY_MEDIA_SIZE * 8 * 0.82) / duration));
+      let blob = await renderStoryVideo(selectedFile, start, end, Number(videoScale), initialBitrate);
+      if (blob.size > TARGET_STORY_MEDIA_SIZE) {
+        blob = await renderStoryVideo(selectedFile, start, end, Number(videoScale), initialBitrate * 0.55);
+      }
+      if (blob.size > MAX_STORY_FILE_SIZE) {
+        throw new Error("تعذر ضغط الفيديو إلى أقل من 20 ميغابايت. قصّره أكثر أو اختر دقة أقل.");
+      }
+      const dataUrl = await blobToDataUrl(blob);
+      setForm((current) => ({ ...current, media_type: "video", media_url: dataUrl }));
+      setMediaPreviewUrl(dataUrl);
+      setMediaInfo((current) => ({ ...(current || {}), size: blob.size, duration, width: Math.round((current?.width || 0) * Number(videoScale)), height: Math.round((current?.height || 0) * Number(videoScale)) }));
+      setSelectedFile(null);
+      setNotice(`تم تجهيز الفيديو بنجاح (${(blob.size / 1048576).toFixed(1)} ميغابايت).`);
+    } catch (processingError) {
+      setError(processingError instanceof Error ? processingError.message : "تعذر تجهيز الفيديو.");
+    } finally {
+      setMediaProcessing(false);
+    }
   }
 
   function reset() {
     setForm(emptyForm);
     setEditingId(null);
     setError("");
+    setSelectedFile(null);
+    setMediaPreviewUrl("");
+    setMediaInfo(null);
+    setVideoStart(0);
+    setVideoEnd(0);
   }
 
   function save(event: FormEvent) {
@@ -110,7 +254,11 @@ function AdminStories() {
     setNotice("");
     setError("");
     if (!form.media_url) {
-      setError("أضف صورة أو فيديو للقصة أولاً.");
+      setError("جهّز الصورة أو الفيديو أولاً، ثم اضغط نشر القصة.");
+      return;
+    }
+    if (form.media_url.length * 0.75 > MAX_STORY_FILE_SIZE) {
+      setError("الملف الناتج أكبر من 20 ميغابايت. اضغطه أو قصّ الفيديو أكثر.");
       return;
     }
     if (!form.title.trim() && !form.product_name.trim()) {
@@ -144,6 +292,9 @@ function AdminStories() {
   function edit(story: LocalStory) {
     setEditingId(story.id);
     setForm(toForm(story));
+    setMediaPreviewUrl(story.media_url);
+    setMediaInfo(null);
+    setSelectedFile(null);
     setNotice("");
     setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -187,14 +338,24 @@ function AdminStories() {
         <div className="story-form-grid">
           <label className="story-media-picker">
             <span className="story-media-preview">
-              {form.media_url ? (
-                form.media_type === "video" ? <video src={form.media_url} muted controls /> : <img src={form.media_url} alt="معاينة القصة" />
+              {mediaPreviewUrl ? (
+                form.media_type === "video" ? <video src={mediaPreviewUrl} muted controls /> : <img src={mediaPreviewUrl} alt="معاينة القصة" />
               ) : <ImagePlus size={32} />}
             </span>
-            <strong>{form.media_url ? "تغيير الصورة أو الفيديو" : "اختر صورة أو فيديو"}</strong>
+            <strong>{mediaPreviewUrl ? "تغيير الصورة أو الفيديو" : "اختر صورة أو فيديو"}</strong>
             <small>حتى 20 ميغابايت · JPG, PNG, WEBP, MP4</small>
             <input type="file" accept="image/*,video/*" onChange={handleFile} />
           </label>
+          <div className="story-media-editor">
+            <div className="story-editor-heading"><strong>تعديل وتجهيز الوسائط</strong><span>{mediaInfo ? `${(mediaInfo.size / 1048576).toFixed(1)} ميغابايت` : "لم يتم اختيار ملف"}</span></div>
+            {form.media_type === "video" && mediaInfo?.duration ? <>
+              <label><span>بداية الفيديو: {videoStart.toFixed(1)}ث</span><input type="range" min="0" max={Math.max(0, mediaInfo.duration - 0.5)} step="0.1" value={videoStart} onChange={(e) => setVideoStart(Number(e.target.value))} /></label>
+              <label><span>نهاية الفيديو: {videoEnd.toFixed(1)}ث</span><input type="range" min={Math.min(mediaInfo.duration, videoStart + 0.5)} max={mediaInfo.duration} step="0.1" value={videoEnd} onChange={(e) => setVideoEnd(Number(e.target.value))} /></label>
+              <label><span>الدقة</span><select value={videoScale} onChange={(e) => setVideoScale(e.target.value)}><option value="1">الأصلية</option><option value="0.75">متوسطة (75%)</option><option value="0.5">خفيفة (50%)</option></select></label>
+              <button type="button" className="admin-secondary-button" onClick={() => void prepareVideo()} disabled={mediaProcessing || !selectedFile}>{mediaProcessing ? "جاري التجهيز..." : form.media_url ? "إعادة تجهيز الفيديو" : "قص وضغط الفيديو"}</button>
+              <small className="story-editor-help">يتم قص الفيديو وإعادة ضغطه تلقائياً قبل النشر لضمان بقاء الحجم أقل من 20 ميغابايت.</small>
+            </> : mediaInfo ? <small className="story-editor-help">تم ضغط الصورة تلقائياً وتجهيزها للنشر.</small> : <small className="story-editor-help">اختر صورة أو فيديو، ثم عدّل الحجم والمدة هنا قبل النشر.</small>}
+          </div>
           <div className="story-fields">
             <label><span>العنوان</span><input value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="مثلاً: عرض نهاية الأسبوع" /></label>
             <label><span>اسم المنتج</span><input value={form.product_name} onChange={(e) => update("product_name", e.target.value)} placeholder="مثلاً: آلة قهوة Nespresso" /></label>
@@ -208,7 +369,7 @@ function AdminStories() {
           </div>
         </div>
         <div className="admin-form-actions">
-          <button className="admin-primary-button" type="submit">{editingId ? <Edit3 size={16} /> : <Play size={16} />}{editingId ? "حفظ التعديل" : "نشر القصة"}</button>
+          <button className="admin-primary-button" type="submit" disabled={mediaProcessing || !!selectedFile}>{editingId ? <Edit3 size={16} /> : <Play size={16} />}{mediaProcessing ? "جاري تجهيز الوسائط..." : editingId ? "حفظ التعديل" : "نشر القصة"}</button>
           {editingId && <button className="admin-secondary-button" type="button" onClick={reset}>إلغاء</button>}
         </div>
         </>}
