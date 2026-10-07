@@ -153,7 +153,7 @@ function AdminStories() {
   function refresh() {
     setStories(getLocalStories());
   }
-  useEffect(() => refresh(), []);
+  useEffect(() => { refresh(); void pullSiteContent().then(refresh); }, []);
 
   function update<K extends keyof StoryForm>(key: K, value: StoryForm[K]) {
     setForm((current) => ({ ...current, [key]: value }));
