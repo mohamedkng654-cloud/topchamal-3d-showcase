@@ -96,6 +96,7 @@ export function Storefront() {
   const [percent, setPercent] = useState(0);
   const [now, setNow] = useState(0);
   const [stories, setStories] = useState<LocalStory[]>([]);
+  const [storyViewerIndex, setStoryViewerIndex] = useState<number | null>(null);
   const productRef = useRef<HTMLElement>(null);
   useEffect(() => {
     void loadStorefrontProducts(fallbackProducts).then(setProducts);
@@ -120,6 +121,27 @@ export function Storefront() {
   useEffect(() => {
     if (loaded) localStorage.setItem("topchamal-cart", JSON.stringify(cart));
   }, [cart, loaded]);
+  useEffect(() => {
+    if (storyViewerIndex === null) return;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setStoryViewerIndex(null);
+      if (event.key === "ArrowLeft") setStoryViewerIndex((index) => (index === null ? null : Math.max(0, index - 1)));
+      if (event.key === "ArrowRight") setStoryViewerIndex((index) => (index === null ? null : index + 1 < stories.length ? index + 1 : 0));
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [storyViewerIndex, stories.length]);
+  useEffect(() => {
+    if (storyViewerIndex === null || stories.length < 2) return;
+    const timer = window.setTimeout(() => {
+      setStoryViewerIndex((index) => (index === null ? null : index + 1 < stories.length ? index + 1 : 0));
+    }, 6500);
+    return () => window.clearTimeout(timer);
+  }, [storyViewerIndex, stories.length]);
   useEffect(() => {
     if (!loaded) return;
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -424,17 +446,31 @@ export function Storefront() {
       {stories.length > 0 && (
         <section className="stories-section" aria-label="قصص وعروض Topchamal">
           <div className="wrap">
-            <div className="stories-heading"><div><span className="eyebrow">TOPCHAMAL STORIES</span><h2 className="section-heading">آخر العروض والقصص</h2></div><span className="stories-heading-note">تحديثات سريعة من المتجر</span></div>
+            <div className="stories-heading"><div><span className="eyebrow">TOPCHAMAL STORIES</span><h2 className="section-heading">آخر العروض والقصص</h2></div><span className="stories-heading-note">اضغط على أي قصة للتصفح مثل Instagram</span></div>
             <div className="stories-strip">
-              {stories.map((story) => <article className="story-card" key={story.id}>
-                <div className="story-media">{story.media_type === "video" ? <video src={story.media_url} autoPlay muted loop playsInline /> : <img src={story.media_url} alt={story.title} />}</div>
-                <div className="story-overlay"><span className="story-offer">{story.offer_label || "عرض خاص"}</span><h3>{story.title}</h3>{story.caption && <p>{story.caption}</p>}{story.product_name && <strong>{story.product_name}</strong>}{story.price_mad != null && <div className="story-price"><span>{formatPrice(story.price_mad)} د.م</span>{story.old_price_mad != null && <del>{formatPrice(story.old_price_mad)} د.م</del>}</div>}</div>
+              {stories.map((story, index) => <button className="story-card" key={story.id} type="button" onClick={() => setStoryViewerIndex(index)} aria-label={`فتح قصة ${story.title}`}>
+                <span className="story-ring"><span className="story-media">{story.media_type === "video" ? <video src={story.media_url} muted playsInline /> : <img src={story.media_url} alt="" />}</span></span>
+                <span className="story-card-label">{story.title}</span>
                 {story.media_type === "video" && <span className="story-play"><Play size={14} fill="currentColor" /></span>}
-              </article>)}
+              </button>)}
             </div>
           </div>
         </section>
       )}
+      {storyViewerIndex !== null && stories[storyViewerIndex] && (() => {
+        const story = stories[storyViewerIndex];
+        return <div className="story-viewer" role="dialog" aria-modal="true" aria-label="عارض القصص">
+          <button type="button" className="story-viewer-backdrop" onClick={() => setStoryViewerIndex(null)} aria-label="إغلاق القصص" />
+          <div className="story-viewer-shell">
+            <div className="story-progress-row">{stories.map((item, index) => <span className={`story-progress ${index < storyViewerIndex ? "complete" : ""}`} key={item.id}><i className={index === storyViewerIndex ? "running" : ""} /></span>)}</div>
+            <div className="story-viewer-top"><div className="story-viewer-brand"><img src={brandLogo} alt="TopChamal" /><span>TopChamal</span></div><span className="story-counter">{storyViewerIndex + 1} / {stories.length}</span><button type="button" className="story-viewer-close" onClick={() => setStoryViewerIndex(null)} aria-label="إغلاق"><X size={20} /></button></div>
+            <div className="story-viewer-media">{story.media_type === "video" ? <video key={story.id} src={story.media_url} autoPlay muted playsInline /> : <img key={story.id} src={story.media_url} alt={story.title} />}</div>
+            <button type="button" className="story-nav story-nav-prev" onClick={() => setStoryViewerIndex((index) => index === null ? null : Math.max(0, index - 1))} aria-label="القصة السابقة"><ArrowLeft size={24} /></button>
+            <button type="button" className="story-nav story-nav-next" onClick={() => setStoryViewerIndex((index) => index === null ? null : index + 1 < stories.length ? index + 1 : 0)} aria-label="القصة التالية"><ArrowRight size={24} /></button>
+            <div className="story-viewer-info"><span className="story-offer">{story.offer_label || "عرض خاص"}</span><h3>{story.title}</h3>{story.caption && <p>{story.caption}</p>}{story.product_name && <strong>{story.product_name}</strong>}{story.price_mad != null && <div className="story-price"><span>{formatPrice(story.price_mad)} د.م</span>{story.old_price_mad != null && <del>{formatPrice(story.old_price_mad)} د.م</del>}</div>}</div>
+          </div>
+        </div>;
+      })()}
       <section className="section category-section" id="categories">
         <div className="wrap">
           <div className="section-top reveal">
