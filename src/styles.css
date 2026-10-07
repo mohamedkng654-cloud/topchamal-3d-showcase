@@ -81,3 +81,17 @@
 .footer .brand { display: inline-flex; align-items: center; }
 .footer-logo { display: block; width: 150px; height: 99px; object-fit: cover; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 10px 24px color-mix(in oklab, var(--background) 22%, transparent); }
 @media (max-width: 700px) { .footer-logo { width: 126px; height: 83px; } }
+/* Refined storefront finish: preserve the geometric Moroccan direction while improving depth and touch feedback. */
+.site-header .wrap { min-height: 100%; }
+.stats-strip { background: linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, var(--primary)), var(--card)); }
+.category-item, .product-card { border-radius: 14px; overflow: hidden; }
+.category-item:focus-visible, .product-card:focus-within { box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 22%, transparent); }
+.product-section { background-image: radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--primary) 5%, transparent), transparent 38%); }
+.product-photo { background: linear-gradient(145deg, var(--accent), color-mix(in oklab, var(--accent) 72%, var(--primary))); }
+.drawer-head { background: linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, var(--primary)), var(--card)); }
+.drawer-foot { background: color-mix(in oklab, var(--card) 94%, var(--primary)); }
+@media (max-width: 700px) {
+  .site-header.is-scrolled { box-shadow: 0 8px 24px color-mix(in oklab, var(--background) 55%, transparent); }
+  .product-card { border-radius: 11px; }
+  .category-item { border-radius: 11px; }
+}
