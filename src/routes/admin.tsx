@@ -15,8 +15,10 @@ import {
   Tag,
   Users,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { getAdminProfile, signOutAdmin } from "@/lib/admin-auth";
 import { getLocalAdmin } from "@/lib/local-admin";
+import { migrateLegacyLocalAdminData } from "@/lib/legacy-sync";
 import { supabase, supabaseConfigured, type AdminProfile } from "@/lib/supabase";
 import "../styles/admin.css";
 
@@ -50,6 +52,33 @@ function AdminLayout() {
   const navigate = useNavigate();
   const router = useRouter();
   const { admin } = Route.useRouteContext() as { admin: AdminProfile | null };
+  const [legacySyncNotice, setLegacySyncNotice] = useState("");
+
+  useEffect(() => {
+    if (!admin || !supabaseConfigured) return;
+    let mounted = true;
+    void migrateLegacyLocalAdminData()
+      .then((summary) => {
+        if (!mounted || !summary) return;
+        const total = summary.products + summary.categories + summary.orders + summary.stories;
+        const details = [
+          summary.products ? `${summary.products} منتج` : "",
+          summary.categories ? `${summary.categories} تصنيف` : "",
+          summary.orders ? `${summary.orders} طلب` : "",
+          summary.stories ? `${summary.stories} قصة` : "",
+          summary.siteSettings ? "إعدادات الموقع" : "",
+        ].filter(Boolean);
+        if (total || summary.siteSettings) {
+          setLegacySyncNotice(`تمت مزامنة بيانات هذا الجهاز مع Supabase: ${details.join("، ")}.`);
+        }
+      })
+      .catch((error) => {
+        console.error("[Admin] Legacy local data migration failed", error);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [admin]);
 
   async function logout() {
     await signOutAdmin();
@@ -104,6 +133,7 @@ function AdminLayout() {
           </div>
         </header>
         <main className="admin-content">
+          {legacySyncNotice && <div className="admin-alert success">{legacySyncNotice}</div>}
           <Outlet />
         </main>
       </div>
