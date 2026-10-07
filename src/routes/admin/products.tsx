@@ -18,6 +18,7 @@ import { supabase, supabaseConfigured } from "@/lib/supabase";
 import {
   getLocalCategories,
   getLocalProducts,
+  CATALOG_EMPTY,
   deleteLocalProduct,
   upsertLocalProduct,
   upsertLocalCategory,
@@ -209,9 +210,10 @@ function AdminProducts() {
   const [copilotLoading, setCopilotLoading] = useState(false);
   const [collapsedPanels, setCollapsedPanels] = useState<Record<string, boolean>>(() => {
     try {
-      return JSON.parse(
-        localStorage.getItem("topchamal-admin-collapsed-panels") || "{}",
-      ) as Record<string, boolean>;
+      return JSON.parse(localStorage.getItem("topchamal-admin-collapsed-panels") || "{}") as Record<
+        string,
+        boolean
+      >;
     } catch {
       return {};
     }
@@ -247,6 +249,12 @@ function AdminProducts() {
   async function loadData() {
     setLoading(true);
     setError("");
+    if (CATALOG_EMPTY) {
+      setProducts([]);
+      setCategories(getLocalCategories());
+      setLoading(false);
+      return;
+    }
     if (!supabaseConfigured) {
       setProducts(getLocalProducts() as Product[]);
       setCategories(getLocalCategories());
@@ -706,8 +714,7 @@ function AdminProducts() {
     for (let index = 0; index < payload.length; index += chunkSize) {
       const chunkNumber = Math.floor(index / chunkSize) + 1;
       setBulkProgress(`جار حفظ الدفعة ${chunkNumber} من ${totalChunks}...`);
-      const result = await productsTable()
-        .insert(payload.slice(index, index + chunkSize));
+      const result = await productsTable().insert(payload.slice(index, index + chunkSize));
       if (result.error) {
         setBulkSaving(false);
         setBulkProgress("");
@@ -903,115 +910,117 @@ function AdminProducts() {
           </div>
           {panelToggle("copilot")}
         </div>
-        {!collapsedPanels["copilot"] && <>
-        <div className="copilot-chat">
-          <div className="copilot-message">
-            ما اسم المنتج؟ وما العلامة التجارية والتصنيف والسعر والمخزون؟ يمكنك إضافة ملاحظات قصيرة
-            وسأرتب المعلومات لك.
-          </div>
-        </div>
-        <div className="admin-form-grid copilot-grid">
-          <label>
-            <span>اسم المنتج *</span>
-            <input
-              value={copilot.name}
-              onChange={(event) =>
-                setCopilot((current) => ({ ...current, name: event.target.value }))
-              }
-              placeholder="مثلاً: Blender Moulinex"
-            />
-          </label>
-          <label>
-            <span>العلامة التجارية</span>
-            <input
-              value={copilot.brand}
-              onChange={(event) =>
-                setCopilot((current) => ({ ...current, brand: event.target.value }))
-              }
-              placeholder="Moulinex"
-            />
-          </label>
-          <label>
-            <span>التصنيف</span>
-            <select
-              value={copilot.category_id}
-              onChange={(event) =>
-                setCopilot((current) => ({ ...current, category_id: event.target.value }))
-              }
-            >
-              <option value="">بدون تصنيف</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>السعر</span>
-            <input
-              dir="ltr"
-              type="number"
-              min="0"
-              value={copilot.price}
-              onChange={(event) =>
-                setCopilot((current) => ({ ...current, price: event.target.value }))
-              }
-              placeholder="اتركه فارغاً لمسودة"
-            />
-          </label>
-          <label>
-            <span>المخزون</span>
-            <input
-              dir="ltr"
-              type="number"
-              min="0"
-              value={copilot.stock}
-              onChange={(event) =>
-                setCopilot((current) => ({ ...current, stock: event.target.value }))
-              }
-            />
-          </label>
-          <label className="admin-form-wide">
-            <span>معلومات إضافية أو وصف أولي</span>
-            <textarea
-              value={copilot.notes}
-              onChange={(event) =>
-                setCopilot((current) => ({ ...current, notes: event.target.value }))
-              }
-              placeholder="اللون، السعة، أو أي معلومة تريد تضمينها..."
-            />
-          </label>
-        </div>
-        <div className="admin-form-actions">
-          <button
-            type="button"
-            className="admin-primary-button"
-            onClick={() => void buildCopilotDraft()}
-            disabled={copilotLoading}
-          >
-            <Sparkles size={16} />{" "}
-            {copilotLoading ? "المساعد يجهز المسودة..." : "جهّز لي مسودة المنتج"}
-          </button>
-          <button
-            type="button"
-            className="admin-secondary-button"
-            onClick={() => {
-              setCopilot({
-                name: "",
-                brand: "",
-                category_id: "",
-                price: "",
-                stock: "0",
-                notes: "",
-              });
-              setForm(emptyForm);
-            }}
-          >
-            مسح المحادثة
-          </button>
-        </div>
-        </>}
+        {!collapsedPanels["copilot"] && (
+          <>
+            <div className="copilot-chat">
+              <div className="copilot-message">
+                ما اسم المنتج؟ وما العلامة التجارية والتصنيف والسعر والمخزون؟ يمكنك إضافة ملاحظات
+                قصيرة وسأرتب المعلومات لك.
+              </div>
+            </div>
+            <div className="admin-form-grid copilot-grid">
+              <label>
+                <span>اسم المنتج *</span>
+                <input
+                  value={copilot.name}
+                  onChange={(event) =>
+                    setCopilot((current) => ({ ...current, name: event.target.value }))
+                  }
+                  placeholder="مثلاً: Blender Moulinex"
+                />
+              </label>
+              <label>
+                <span>العلامة التجارية</span>
+                <input
+                  value={copilot.brand}
+                  onChange={(event) =>
+                    setCopilot((current) => ({ ...current, brand: event.target.value }))
+                  }
+                  placeholder="Moulinex"
+                />
+              </label>
+              <label>
+                <span>التصنيف</span>
+                <select
+                  value={copilot.category_id}
+                  onChange={(event) =>
+                    setCopilot((current) => ({ ...current, category_id: event.target.value }))
+                  }
+                >
+                  <option value="">بدون تصنيف</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>السعر</span>
+                <input
+                  dir="ltr"
+                  type="number"
+                  min="0"
+                  value={copilot.price}
+                  onChange={(event) =>
+                    setCopilot((current) => ({ ...current, price: event.target.value }))
+                  }
+                  placeholder="اتركه فارغاً لمسودة"
+                />
+              </label>
+              <label>
+                <span>المخزون</span>
+                <input
+                  dir="ltr"
+                  type="number"
+                  min="0"
+                  value={copilot.stock}
+                  onChange={(event) =>
+                    setCopilot((current) => ({ ...current, stock: event.target.value }))
+                  }
+                />
+              </label>
+              <label className="admin-form-wide">
+                <span>معلومات إضافية أو وصف أولي</span>
+                <textarea
+                  value={copilot.notes}
+                  onChange={(event) =>
+                    setCopilot((current) => ({ ...current, notes: event.target.value }))
+                  }
+                  placeholder="اللون، السعة، أو أي معلومة تريد تضمينها..."
+                />
+              </label>
+            </div>
+            <div className="admin-form-actions">
+              <button
+                type="button"
+                className="admin-primary-button"
+                onClick={() => void buildCopilotDraft()}
+                disabled={copilotLoading}
+              >
+                <Sparkles size={16} />{" "}
+                {copilotLoading ? "المساعد يجهز المسودة..." : "جهّز لي مسودة المنتج"}
+              </button>
+              <button
+                type="button"
+                className="admin-secondary-button"
+                onClick={() => {
+                  setCopilot({
+                    name: "",
+                    brand: "",
+                    category_id: "",
+                    price: "",
+                    stock: "0",
+                    notes: "",
+                  });
+                  setForm(emptyForm);
+                }}
+              >
+                مسح المحادثة
+              </button>
+            </div>
+          </>
+        )}
       </section>
 
       <section className="dashboard-panel catalog-manager-panel">
@@ -1025,68 +1034,70 @@ function AdminProducts() {
           </div>
           {panelToggle("catalog")}
         </div>
-        {!collapsedPanels["catalog"] && <>
-        <div className="admin-form-grid">
-          <label>
-            <span>اسم الكتالوج</span>
-            <input
-              value={catalogName}
-              onChange={(event) => setCatalogName(event.target.value)}
-              placeholder="مثلاً: أجهزة المطبخ"
-            />
-          </label>
-          <label>
-            <span>الرابط المختصر</span>
-            <input
-              dir="ltr"
-              value={catalogSlug}
-              onChange={(event) => setCatalogSlug(event.target.value)}
-              placeholder="kitchen-appliances"
-            />
-          </label>
-        </div>
-        <div className="admin-form-actions">
-          <button type="button" className="admin-primary-button" onClick={saveCatalog}>
-            {editingCategoryId ? "حفظ تعديل الكتالوج" : "إضافة الكتالوج"}
-          </button>
-          {editingCategoryId && (
-            <button
-              type="button"
-              className="admin-secondary-button"
-              onClick={() => {
-                setEditingCategoryId(null);
-                setCatalogName("");
-                setCatalogSlug("");
-              }}
-            >
-              إلغاء
-            </button>
-          )}
-        </div>
-        <div className="admin-row-actions catalog-list">
-          {categories.map((category) => (
-            <span className="status-pill" key={category.id}>
-              {category.name}
-              <button
-                type="button"
-                className="admin-icon-button"
-                onClick={() => editCatalog(category)}
-                aria-label={`تعديل ${category.name}`}
-              >
-                <Edit3 size={13} />
+        {!collapsedPanels["catalog"] && (
+          <>
+            <div className="admin-form-grid">
+              <label>
+                <span>اسم الكتالوج</span>
+                <input
+                  value={catalogName}
+                  onChange={(event) => setCatalogName(event.target.value)}
+                  placeholder="مثلاً: أجهزة المطبخ"
+                />
+              </label>
+              <label>
+                <span>الرابط المختصر</span>
+                <input
+                  dir="ltr"
+                  value={catalogSlug}
+                  onChange={(event) => setCatalogSlug(event.target.value)}
+                  placeholder="kitchen-appliances"
+                />
+              </label>
+            </div>
+            <div className="admin-form-actions">
+              <button type="button" className="admin-primary-button" onClick={saveCatalog}>
+                {editingCategoryId ? "حفظ تعديل الكتالوج" : "إضافة الكتالوج"}
               </button>
-              <button
-                type="button"
-                className="admin-icon-button"
-                onClick={() => removeCatalog(category)}
-                aria-label={`حذف ${category.name}`}
-              >
-                <Trash2 size={13} />
-              </button>
-            </span>
-          ))}
-        </div>
-        </>}
+              {editingCategoryId && (
+                <button
+                  type="button"
+                  className="admin-secondary-button"
+                  onClick={() => {
+                    setEditingCategoryId(null);
+                    setCatalogName("");
+                    setCatalogSlug("");
+                  }}
+                >
+                  إلغاء
+                </button>
+              )}
+            </div>
+            <div className="admin-row-actions catalog-list">
+              {categories.map((category) => (
+                <span className="status-pill" key={category.id}>
+                  {category.name}
+                  <button
+                    type="button"
+                    className="admin-icon-button"
+                    onClick={() => editCatalog(category)}
+                    aria-label={`تعديل ${category.name}`}
+                  >
+                    <Edit3 size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-icon-button"
+                    onClick={() => removeCatalog(category)}
+                    aria-label={`حذف ${category.name}`}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
       <section className="dashboard-panel bulk-products-panel">
@@ -1114,132 +1125,140 @@ function AdminProducts() {
           </div>
           {panelToggle("bulk")}
         </div>
-        {!collapsedPanels["bulk"] && <>
-        <div className="bulk-import">
-          <textarea
-            value={bulkText}
-            onChange={(event) => setBulkText(event.target.value)}
-            placeholder="الصق من Excel أو Google Sheets: الاسم، السعر، المخزون، التصنيف (كل منتج في سطر)"
-          />
-          <button type="button" className="admin-secondary-button" onClick={importBulkText}>
-            استيراد الصفوف
-          </button>
-        </div>
-        <div className="admin-table-wrap bulk-table-wrap">
-          <table className="admin-table bulk-table" aria-label="إضافة منتجات بالجملة">
-            <thead>
-              <tr>
-                <th>اسم المنتج *</th>
-                <th>الوصف</th>
-                <th>السعر لاحقاً</th>
-                <th>المخزون</th>
-                <th>التصنيف</th>
-                <th>الحالة</th>
-                <th>الصورة</th>
-                <th>الوسوم</th>
-                <th>مساعدة</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bulkRows.map((row, index) => (
-                <tr key={index}>
-                  <td>
-                    <input
-                      value={row.name}
-                      onChange={(event) => updateBulkRow(index, "name", event.target.value)}
-                      placeholder="مثلاً: خلاط Moulinex"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      value={row.description}
-                      onChange={(event) => updateBulkRow(index, "description", event.target.value)}
-                      placeholder="وصف المنتج"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      dir="ltr"
-                      type="number"
-                      min="0"
-                      value={row.price}
-                      onChange={(event) => updateBulkRow(index, "price", event.target.value)}
-                      placeholder="لاحقاً"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      dir="ltr"
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={row.stock}
-                      onChange={(event) => updateBulkRow(index, "stock", event.target.value)}
-                    />
-                  </td>
-                  <td>
-                    <select
-                      value={row.category}
-                      onChange={(event) => updateBulkRow(index, "category", event.target.value)}
-                    >
-                      <option value="">بدون تصنيف</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <select
-                      value={row.status}
-                      onChange={(event) => updateBulkRow(index, "status", event.target.value)}
-                    >
-                      <option value="draft">مسودة</option>
-                      <option value="published">منشور</option>
-                      <option value="archived">مؤرشف</option>
-                    </select>
-                  </td>
-                  <td>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => readBulkImageFile(index, event.target.files?.[0])}
-                    />
-                    <input
-                      dir="ltr"
-                      value={row.image_url.startsWith("data:") ? "تم اختيار صورة" : row.image_url}
-                      onChange={(event) => updateBulkRow(index, "image_url", event.target.value)}
-                      placeholder="رابط الصورة"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      value={row.tags}
-                      onChange={(event) => updateBulkRow(index, "tags", event.target.value)}
-                      placeholder="وسوم"
-                    />
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="admin-action ai"
-                      onClick={() => void assistBulkRow(index)}
-                      title="توليد الوصف والوسوم والرابط بواسطة OpenAI"
-                    >
-                      <Sparkles size={14} /> اقتراح
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <small className="admin-ai-note">
-          <Sparkles size={13} /> OpenAI يولّد الوصف والوسوم والرابط، وتبقى كل الاقتراحات قابلة
-          للمراجعة قبل الحفظ.
-        </small>
-        </>}
+        {!collapsedPanels["bulk"] && (
+          <>
+            <div className="bulk-import">
+              <textarea
+                value={bulkText}
+                onChange={(event) => setBulkText(event.target.value)}
+                placeholder="الصق من Excel أو Google Sheets: الاسم، السعر، المخزون، التصنيف (كل منتج في سطر)"
+              />
+              <button type="button" className="admin-secondary-button" onClick={importBulkText}>
+                استيراد الصفوف
+              </button>
+            </div>
+            <div className="admin-table-wrap bulk-table-wrap">
+              <table className="admin-table bulk-table" aria-label="إضافة منتجات بالجملة">
+                <thead>
+                  <tr>
+                    <th>اسم المنتج *</th>
+                    <th>الوصف</th>
+                    <th>السعر لاحقاً</th>
+                    <th>المخزون</th>
+                    <th>التصنيف</th>
+                    <th>الحالة</th>
+                    <th>الصورة</th>
+                    <th>الوسوم</th>
+                    <th>مساعدة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkRows.map((row, index) => (
+                    <tr key={index}>
+                      <td>
+                        <input
+                          value={row.name}
+                          onChange={(event) => updateBulkRow(index, "name", event.target.value)}
+                          placeholder="مثلاً: خلاط Moulinex"
+                        />
+                      </td>
+                      <td>
+                        <input
+                          value={row.description}
+                          onChange={(event) =>
+                            updateBulkRow(index, "description", event.target.value)
+                          }
+                          placeholder="وصف المنتج"
+                        />
+                      </td>
+                      <td>
+                        <input
+                          dir="ltr"
+                          type="number"
+                          min="0"
+                          value={row.price}
+                          onChange={(event) => updateBulkRow(index, "price", event.target.value)}
+                          placeholder="لاحقاً"
+                        />
+                      </td>
+                      <td>
+                        <input
+                          dir="ltr"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={row.stock}
+                          onChange={(event) => updateBulkRow(index, "stock", event.target.value)}
+                        />
+                      </td>
+                      <td>
+                        <select
+                          value={row.category}
+                          onChange={(event) => updateBulkRow(index, "category", event.target.value)}
+                        >
+                          <option value="">بدون تصنيف</option>
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          value={row.status}
+                          onChange={(event) => updateBulkRow(index, "status", event.target.value)}
+                        >
+                          <option value="draft">مسودة</option>
+                          <option value="published">منشور</option>
+                          <option value="archived">مؤرشف</option>
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => readBulkImageFile(index, event.target.files?.[0])}
+                        />
+                        <input
+                          dir="ltr"
+                          value={
+                            row.image_url.startsWith("data:") ? "تم اختيار صورة" : row.image_url
+                          }
+                          onChange={(event) =>
+                            updateBulkRow(index, "image_url", event.target.value)
+                          }
+                          placeholder="رابط الصورة"
+                        />
+                      </td>
+                      <td>
+                        <input
+                          value={row.tags}
+                          onChange={(event) => updateBulkRow(index, "tags", event.target.value)}
+                          placeholder="وسوم"
+                        />
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="admin-action ai"
+                          onClick={() => void assistBulkRow(index)}
+                          title="توليد الوصف والوسوم والرابط بواسطة OpenAI"
+                        >
+                          <Sparkles size={14} /> اقتراح
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <small className="admin-ai-note">
+              <Sparkles size={13} /> OpenAI يولّد الوصف والوسوم والرابط، وتبقى كل الاقتراحات قابلة
+              للمراجعة قبل الحفظ.
+            </small>
+          </>
+        )}
       </section>
 
       <form className="dashboard-panel admin-form-panel" onSubmit={saveProduct}>

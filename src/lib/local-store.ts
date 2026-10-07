@@ -36,6 +36,8 @@ const ORDERS_KEY = "topchamal-local-orders";
 const SETTINGS_KEY = "topchamal-local-site-settings";
 const STORIES_KEY = "topchamal-local-stories";
 const CATALOG_SEEDED_KEY = "topchamal-local-catalog-seeded-v1";
+/** All products were intentionally removed globally. */
+export const CATALOG_EMPTY = true;
 
 type LocalProduct = {
   id: string;
@@ -108,14 +110,16 @@ export type LocalStory = {
   expires_at: string | null;
 };
 
-const starterCategories: LocalCategory[] = ([
-  ["cofee-machine", "آلات القهوة"],
-  ["blender", "الخلاطات"],
-  ["robot-cuiseur", "العجانات"],
-  ["cocotte", "طنجرات الضغط"],
-  ["presse", "عصارات"],
-  ["aspirateur", "مكانس كهربائية"],
-] as const).map(([slug, name], index) => ({
+const starterCategories: LocalCategory[] = (
+  [
+    ["cofee-machine", "آلات القهوة"],
+    ["blender", "الخلاطات"],
+    ["robot-cuiseur", "العجانات"],
+    ["cocotte", "طنجرات الضغط"],
+    ["presse", "عصارات"],
+    ["aspirateur", "مكانس كهربائية"],
+  ] as const
+).map(([slug, name], index) => ({
   id: `category-${slug}`,
   name,
   slug,
@@ -188,6 +192,13 @@ function id(prefix: string) {
 }
 
 export function getLocalProducts(): LocalProduct[] {
+  if (CATALOG_EMPTY) {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(PRODUCTS_KEY);
+      window.localStorage.setItem(CATALOG_SEEDED_KEY, "empty-v1");
+    }
+    return [];
+  }
   const existing = read<LocalProduct[]>(PRODUCTS_KEY, []);
   if (typeof window !== "undefined" && !window.localStorage.getItem(CATALOG_SEEDED_KEY)) {
     const merged = [
@@ -263,9 +274,7 @@ export function getLocalStories(): LocalStory[] {
 }
 export function getActiveLocalStories(now = Date.now()): LocalStory[] {
   return getLocalStories().filter(
-    (story) =>
-      story.is_active &&
-      (!story.expires_at || new Date(story.expires_at).getTime() > now),
+    (story) => story.is_active && (!story.expires_at || new Date(story.expires_at).getTime() > now),
   );
 }
 export function upsertLocalStory(
@@ -290,7 +299,10 @@ export function updateLocalStory(idValue: string, patch: Partial<LocalStory>) {
   );
 }
 export function deleteLocalStory(idValue: string) {
-  write(STORIES_KEY, getLocalStories().filter((story) => story.id !== idValue));
+  write(
+    STORIES_KEY,
+    getLocalStories().filter((story) => story.id !== idValue),
+  );
 }
 export function getLocalOrders(): LocalOrder[] {
   return read<LocalOrder[]>(ORDERS_KEY, []).map((order, index) => ({

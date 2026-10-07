@@ -1,5 +1,5 @@
 import { supabase, supabaseConfigured } from "./supabase";
-import { getLocalProducts } from "./local-store";
+import { CATALOG_EMPTY, getLocalProducts } from "./local-store";
 
 export type StorefrontProduct = {
   id: string;
@@ -47,12 +47,21 @@ function mapProduct(row: CatalogRow): StorefrontProduct {
 export async function loadStorefrontProducts(
   fallback: StorefrontProduct[],
 ): Promise<StorefrontProduct[]> {
+  if (CATALOG_EMPTY) return [];
   if (!supabaseConfigured) {
-    return getLocalProducts().filter((row) => row.status === "published").map((row) => ({
-      id: row.slug, slug: row.slug, name: row.name, category: row.category_id?.replace(/^category-/, "") || "all",
-      price: row.discount_price_mad ?? row.price_mad, oldPrice: row.discount_price_mad == null ? null : row.price_mad,
-      description: row.description || "منتج من تشكيلة Topchamal.", image: row.image_urls?.[0] || fallbackImage, stock: row.stock,
-    }));
+    return getLocalProducts()
+      .filter((row) => row.status === "published")
+      .map((row) => ({
+        id: row.slug,
+        slug: row.slug,
+        name: row.name,
+        category: row.category_id?.replace(/^category-/, "") || "all",
+        price: row.discount_price_mad ?? row.price_mad,
+        oldPrice: row.discount_price_mad == null ? null : row.price_mad,
+        description: row.description || "منتج من تشكيلة Topchamal.",
+        image: row.image_urls?.[0] || fallbackImage,
+        stock: row.stock,
+      }));
   }
   const { data, error } = await supabase
     .from("products")
