@@ -5,11 +5,17 @@ const CLOUD_KEYS: Record<string, string> = {
   "topchamal-local-site-settings": "site_settings",
   "topchamal-local-stories": "stories",
 };
+type SiteContentTable = {
+  upsert(values: Record<string, unknown>): Promise<{ error: unknown }>;
+  select(columns: string): Promise<{ data: unknown; error: unknown }>;
+};
+function siteContentTable(): SiteContentTable {
+  return (supabase as unknown as { from(table: string): SiteContentTable }).from("site_content");
+}
 function pushCloud(key: string, value: unknown) {
   const cloudKey = CLOUD_KEYS[key];
   if (!cloudKey) return;
-  void (supabase as any)
-    .from("site_content")
+  void siteContentTable()
     .upsert({ key: cloudKey, value, updated_at: new Date().toISOString() })
     .then(({ error }: { error: unknown }) => {
       if (error) console.error("[Site] Could not publish change", error);
@@ -19,7 +25,7 @@ function pushCloud(key: string, value: unknown) {
 export async function pullSiteContent(): Promise<void> {
   if (typeof window === "undefined") return;
   try {
-    const { data, error } = await (supabase as any).from("site_content").select("key,value");
+    const { data, error } = await siteContentTable().select("key,value");
     if (error || !data) return;
     for (const [localKey, cloudKey] of Object.entries(CLOUD_KEYS)) {
       const row = (data as Array<{ key: string; value: unknown }>).find((r) => r.key === cloudKey);
