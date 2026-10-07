@@ -250,7 +250,7 @@ function AdminStories() {
     setVideoEnd(0);
   }
 
-  function save(event: FormEvent) {
+  async function save(event: FormEvent) {
     event.preventDefault();
     setNotice("");
     setError("");
@@ -267,7 +267,8 @@ function AdminStories() {
       return;
     }
     const existing = editingId ? stories.find((story) => story.id === editingId) : undefined;
-    const saved = upsertLocalStory({
+    try {
+    const saved = await upsertLocalStory({
       ...(editingId ? { id: editingId } : {}),
       media_type: form.media_type,
       media_url: form.media_url,
@@ -288,6 +289,9 @@ function AdminStories() {
     refresh();
     reset();
     setNotice(saved.is_active ? "تم نشر القصة بنجاح." : "تم حفظ القصة.");
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "تعذر نشر القصة لجميع الزوار.");
+    }
   }
 
   function edit(story: LocalStory) {
@@ -301,18 +305,26 @@ function AdminStories() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function toggle(story: LocalStory) {
-    updateLocalStory(story.id, { is_active: !story.is_active });
-    refresh();
-    setNotice(story.is_active ? "تم إيقاف القصة." : "تم تشغيل القصة.");
+  async function toggle(story: LocalStory) {
+    try {
+      await updateLocalStory(story.id, { is_active: !story.is_active });
+      refresh();
+      setNotice(story.is_active ? "تم إيقاف القصة لجميع الزوار." : "تم تشغيل القصة لجميع الزوار.");
+    } catch (toggleError) {
+      setError(toggleError instanceof Error ? toggleError.message : "تعذر تحديث القصة.");
+    }
   }
 
-  function remove(story: LocalStory) {
+  async function remove(story: LocalStory) {
     if (!window.confirm("حذف هذه القصة نهائياً؟")) return;
-    deleteLocalStory(story.id);
-    refresh();
-    if (editingId === story.id) reset();
-    setNotice("تم حذف القصة.");
+    try {
+      await deleteLocalStory(story.id);
+      refresh();
+      if (editingId === story.id) reset();
+      setNotice("تم حذف القصة لجميع الزوار.");
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "تعذر حذف القصة.");
+    }
   }
 
   return (
@@ -377,7 +389,7 @@ function AdminStories() {
       </form>
 
       <div className="dashboard-panel admin-table-panel">
-        <div className="panel-heading"><div><span className="admin-eyebrow">إدارة القصص</span><h3>{stories.length} قصة محفوظة</h3></div><div className="panel-heading-actions"><small className="story-local-note">تُحفظ محلياً في هذا المتصفح</small><button type="button" className="admin-collapse-button" onClick={() => setListOpen((open) => !open)} aria-expanded={listOpen}><ChevronDown size={15} className={listOpen ? "" : "is-collapsed"} />{listOpen ? "إخفاء" : "إظهار"}</button></div></div>
+        <div className="panel-heading"><div><span className="admin-eyebrow">إدارة القصص</span><h3>{stories.length} قصة محفوظة</h3></div><div className="panel-heading-actions"><small className="story-local-note">تُحفظ في Supabase وتظهر لجميع الزوار</small><button type="button" className="admin-collapse-button" onClick={() => setListOpen((open) => !open)} aria-expanded={listOpen}><ChevronDown size={15} className={listOpen ? "" : "is-collapsed"} />{listOpen ? "إخفاء" : "إظهار"}</button></div></div>
         {listOpen && (!stories.length ? <p className="admin-state">لا توجد قصص بعد. أضف أول قصة أو عرض من النموذج أعلاه.</p> : (
           <div className="story-list">
             {stories.map((story) => {

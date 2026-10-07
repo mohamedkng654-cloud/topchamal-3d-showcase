@@ -70,13 +70,26 @@ export async function loadStorefrontProducts(
     )
     .eq("status", "published")
     .order("created_at", { ascending: false });
-  if (error || !data) return [];
+  if (error || !data) {
+    console.error("[Storefront] Could not load shared catalog", error);
+    return fallback;
+  }
   const local = new Map(fallback.map((p) => [p.id, p]));
   return (data as CatalogRow[]).map((row) => {
     const product = mapProduct(row);
     const match = local.get(product.id);
     return match && product.image === fallbackImage ? { ...product, image: match.image } : product;
   });
+}
+
+export function subscribeToStorefrontCatalog(onChange: () => void) {
+  if (!supabaseConfigured) return () => undefined;
+  const channel = supabase
+    .channel("topchamal-public-catalog")
+    .on("postgres_changes", { event: "*", schema: "public", table: "products" }, onChange)
+    .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, onChange)
+    .subscribe();
+  return () => { void supabase.removeChannel(channel); };
 }
 
 export type NewOrder = {

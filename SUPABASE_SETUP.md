@@ -1,6 +1,6 @@
 # Supabase admin setup
 
-This project now includes a placeholder-based Supabase foundation for the TopChamal admin area.
+This project includes a Supabase-backed TopChamal admin area. Products, categories, orders, site settings, and stories share one database so admin changes are visible to every visitor.
 
 ## Files added
 
@@ -11,14 +11,14 @@ This project now includes a placeholder-based Supabase foundation for the TopCha
 - `src/routes/admin/login.tsx` — `/admin/login` page.
 - `src/routes/admin/index.tsx` — live KPI dashboard queries.
 - `src/styles/admin.css` — responsive admin styling.
-- `supabase/migrations/20261001000000_admin_dashboard.sql` — database schema and RLS policies.
+- `supabase/migrations/` — apply all migrations in filename order for the database schema, RLS policies, shared content, seed catalog, product tags, and Realtime publication.
 
 ## Configure locally
 
 1. Copy `.env.example` to `.env.local`.
 2. Replace `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` with values from Supabase Project Settings → API.
 3. Never put `SUPABASE_SERVICE_ROLE_KEY` in a `VITE_*` variable or browser code. Keep it server-side only if server functions are added later.
-4. Run the SQL migration in the Supabase SQL Editor.
+4. Run every SQL migration in `supabase/migrations/` in filename order in the Supabase SQL Editor, or apply them with the Supabase CLI. Do not skip the restored `20261001000000_admin_dashboard.sql` foundation migration.
 5. In Supabase Authentication → Users, create the first admin user. Choose the email and password yourself; the password is intentionally not stored in this repository.
 6. Copy that user UUID into `public.admins`:
 
@@ -34,4 +34,5 @@ values ('AUTH_USER_UUID', 'ADMIN_EMAIL', 'Store Owner', 'owner');
 - Customer-facing code never contains an admin password.
 - Admin route access is checked against Supabase Auth and an active row in `public.admins`.
 - CRUD tables use row-level security. Public reads are limited to published products, active categories, enabled homepage sections, and store settings.
+- `site_content` is publicly readable but writable only by active admins; the public storefront subscribes to its Realtime changes, as it does for products and categories.
 - The service-role key is not required by the browser and must never be committed.

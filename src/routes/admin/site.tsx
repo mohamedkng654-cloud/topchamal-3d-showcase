@@ -8,15 +8,25 @@ export const Route = createFileRoute("/admin/site")({ component: AdminSiteSettin
 function AdminSiteSettings() {
   const [settings, setSettings] = useState<LocalSiteSettings>(() => getLocalSiteSettings());
   const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
   useEffect(() => { void pullSiteContent().then(() => setSettings(getLocalSiteSettings())); }, []);
   const [heroOpen, setHeroOpen] = useState(true);
   const [salesOpen, setSalesOpen] = useState(true);
   function update(field: keyof LocalSiteSettings, value: string) { setSettings((current) => ({ ...current, [field]: value })); }
-  function save() { saveLocalSiteSettings(settings); setNotice("تم حفظ معلومات الموقع بنجاح."); }
-  function reset() { setSettings(defaultSiteSettings); saveLocalSiteSettings(defaultSiteSettings); setNotice("تمت استعادة المعلومات الافتراضية."); }
+  async function save() {
+    setError("");
+    try { await saveLocalSiteSettings(settings); setNotice("تم حفظ معلومات الموقع لجميع الزوار."); }
+    catch (saveError) { setError(saveError instanceof Error ? saveError.message : "تعذر نشر التغييرات."); }
+  }
+  async function reset() {
+    setSettings(defaultSiteSettings);
+    setError("");
+    try { await saveLocalSiteSettings(defaultSiteSettings); setNotice("تمت استعادة المعلومات الافتراضية لجميع الزوار."); }
+    catch (saveError) { setError(saveError instanceof Error ? saveError.message : "تعذر نشر التغييرات."); }
+  }
   return <section className="dashboard-page">
     <div className="dashboard-heading"><div><span className="admin-eyebrow">إعدادات الموقع</span><h2>محتوى المتجر</h2><p>عدّل النصوص والمعلومات التي تظهر للزوار في الصفحة الرئيسية.</p></div><Store size={28} /></div>
-    {notice && <div className="admin-alert success">{notice}</div>}
+    {(notice || error) && <div className={`admin-alert ${error ? "error" : "success"}`}>{error || notice}</div>}
     <section className="dashboard-panel">
       <div className="panel-heading"><div><span className="admin-eyebrow">الواجهة الرئيسية</span><h3>العنوان والرسالة الترحيبية</h3></div><button type="button" className="admin-collapse-button" onClick={() => setHeroOpen((open) => !open)} aria-expanded={heroOpen}><ChevronDown size={15} className={heroOpen ? "" : "is-collapsed"} />{heroOpen ? "إخفاء" : "إظهار"}</button></div>
       {heroOpen && <div className="admin-form-grid">

@@ -1,6 +1,6 @@
 # Topchamal — 3D showroom
 
-Arabic-first appliance storefront with procedural 3D models, real product photos, and a local cart. No backend or YouCan runtime is required.
+Arabic-first appliance storefront with procedural 3D models, real product photos, a local cart, and a Supabase-backed admin catalog/content system.
 
 ## Run the preview
 
@@ -25,7 +25,9 @@ Edit `src/data/products.json`. Each product contains `id`, `name`, `category`, `
 
 The authenticated admin at `/admin/products` can use OpenAI to generate product descriptions, SEO slugs, and tags. Configure `OPENAI_API_KEY` as a **server-only deployment secret**; never use a `VITE_` variable for it. `OPENAI_MODEL` defaults to `gpt-5-mini` and can be changed to another model supported by the configured OpenAI-compatible endpoint. Apply `drizzle/migrations/0002_product_tags.sql` before saving generated tags.
 
-This project is designed to use **Lovable Cloud**, not a separately owned Supabase project. Enable Cloud from **More → Cloud**, then ask Lovable to create/apply the store schema and migrations in the Cloud database. Admin access is explicit: normal customers can use the storefront without admin access, while trusted staff must be created in Cloud Users and added to `public.admins` with the appropriate `role`.
+This project is designed to use **Lovable Cloud**, not a separately owned Supabase project. Enable Cloud from **More → Cloud**, then apply every SQL file in `supabase/migrations/` in filename order. The migrations create the admin/catalog/order schema, shared site content, RLS policies, and Realtime publication entries. Admin access is explicit: normal customers can use the storefront without admin access, while trusted staff must be created in Cloud Users and added to `public.admins` with the appropriate `role`.
+
+Product, category, site-setting, and story changes are written to Supabase. Public storefront clients load the shared data and subscribe to Supabase Realtime, so successful admin changes propagate to visitors without requiring a deployment or manual browser refresh. The browser keeps a local copy only as a short-lived cache/fallback; it is not the source of truth when Supabase is configured.
 
 Example owner assignment in the Lovable Cloud SQL editor (replace the email):
 

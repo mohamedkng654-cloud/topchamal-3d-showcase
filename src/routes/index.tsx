@@ -27,9 +27,10 @@ import { categories } from "../data/categories";
 import {
   createStorefrontOrder,
   loadStorefrontProducts,
+  subscribeToStorefrontCatalog,
   type StorefrontProduct,
 } from "@/lib/storefront";
-import { defaultSiteSettings, getActiveLocalStories, getLocalSiteSettings, pullSiteContent, type LocalStory } from "@/lib/local-store";
+import { defaultSiteSettings, getActiveLocalStories, getLocalSiteSettings, pullSiteContent, subscribeToSiteContent, type LocalStory } from "@/lib/local-store";
 const brandLogo = "/topchamal-logo.jpg";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -99,7 +100,8 @@ export function Storefront() {
   const [storyViewerIndex, setStoryViewerIndex] = useState<number | null>(null);
   const productRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    void loadStorefrontProducts(fallbackProducts).then(setProducts);
+    const refreshProducts = () => { void loadStorefrontProducts(fallbackProducts).then(setProducts); };
+    refreshProducts();
     try {
       const value = JSON.parse(localStorage.getItem("topchamal-cart") || "[]");
       if (Array.isArray(value))
@@ -119,9 +121,18 @@ export function Storefront() {
       setStories(getActiveLocalStories());
       setSiteSettings(getLocalSiteSettings());
     });
+    const unsubscribeCatalog = subscribeToStorefrontCatalog(refreshProducts);
+    const unsubscribeContent = subscribeToSiteContent(() => {
+      setStories(getActiveLocalStories());
+      setSiteSettings(getLocalSiteSettings());
+    });
     const t = setInterval(() => setNow(Date.now()), 1000);
     setNow(Date.now());
-    return () => clearInterval(t);
+    return () => {
+      clearInterval(t);
+      unsubscribeCatalog();
+      unsubscribeContent();
+    };
   }, []);
   useEffect(() => {
     if (loaded) localStorage.setItem("topchamal-cart", JSON.stringify(cart));
