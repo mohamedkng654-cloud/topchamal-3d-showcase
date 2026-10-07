@@ -8,6 +8,15 @@
       "oldPrice": null,
       "description": "Mixeur Bonana PN-66 avec bol en verre de 1,5 L, cinq vitesses, fonction ice crush, lames en acier inoxydable et moulin à café.",
       "image": "/bonana-pn66.jpg"
+    },
+    {
+      "id": "bonana-bo-jc2018h-juicer",
+      "name": "Bonana BO-JC2018H Presse-agrumes électrique inox",
+      "category": "presse",
+      "price": 279,
+      "oldPrice": null,
+      "description": "Presse-agrumes électrique Bonana BO-JC2018H en acier inoxydable, avec poignée pratique, filtre inoxydable détachable, bec verseur anti-goutte et extraction maximale pour des jus frais rapidement.",
+      "image": "/bonana-bo-jc2018h.jpg"
     }
   ],
   "categoryImages": {
