@@ -43,6 +43,13 @@
       "when": 1791392472924,
       "tag": "0005_site_content",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791393489455,
+      "tag": "0006_product_rules_indexes_realtime",
+      "breakpoints": true
     }
   ]
 }
