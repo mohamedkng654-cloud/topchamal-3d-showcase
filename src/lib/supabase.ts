@@ -2,12 +2,12 @@
 // This client uses Cloud's managed Supabase-compatible foundation; no external
 // Supabase project is required or connected by this application.
 export { supabase } from "@/integrations/supabase/client";
+import { getSupabasePublicConfig } from "@/integrations/supabase/runtime-config";
 
 const runtimeEnv = typeof process !== "undefined" ? process.env : undefined;
-const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] || runtimeEnv?.["SUPABASE_URL"];
-const supabaseKey =
-  import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
-  import.meta.env["VITE_SUPABASE_ANON_KEY"] ||
+const publicConfig = getSupabasePublicConfig();
+const supabaseUrl = publicConfig.url || runtimeEnv?.["SUPABASE_URL"];
+const supabaseKey = publicConfig.publishableKey ||
   runtimeEnv?.["SUPABASE_PUBLISHABLE_KEY"] ||
   runtimeEnv?.["SUPABASE_ANON_KEY"];
 
