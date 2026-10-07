@@ -160,6 +160,28 @@
   width: 36px;
   justify-content: center;
 }
+.admin-top-actions .admin-sync-button {
+  width: auto;
+  justify-content: center;
+  color: #9c5b2f;
+  border-color: #e7c5a7;
+  background: #fffaf5;
+  font-weight: 700;
+}
+.admin-top-actions .admin-sync-button:hover:not(:disabled) {
+  background: #fff2e7;
+  border-color: #c27b42;
+}
+.admin-top-actions .admin-sync-button:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+.admin-sync-button .syncing {
+  animation: admin-sync-spin .8s linear infinite;
+}
+@keyframes admin-sync-spin {
+  to { transform: rotate(360deg); }
+}
 .admin-content {
   padding: 35px 38px;
 }

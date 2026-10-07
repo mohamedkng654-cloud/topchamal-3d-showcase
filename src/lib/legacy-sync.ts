@@ -13,6 +13,10 @@ type LegacySummary = {
   stories: number;
 };
 
+export type LegacySyncOptions = {
+  force?: boolean;
+};
+
 function readJson<T>(key: string, fallback: T): T {
   try {
     const raw = window.localStorage.getItem(key);
@@ -33,12 +37,14 @@ function asNumber(value: unknown, fallback = 0) {
 
 /**
  * Recovers data written by older admin builds that used localStorage instead
- * of Supabase. It is deliberately one-time per browser so an old phone does
- * not overwrite newer shared data on every visit.
+ * of Supabase. Automatic recovery is one-time per browser; an explicit admin
+ * button can force the same local changes to be published again.
  */
-export async function migrateLegacyLocalAdminData(): Promise<LegacySummary | null> {
+export async function migrateLegacyLocalAdminData(
+  { force = false }: LegacySyncOptions = {},
+): Promise<LegacySummary | null> {
   if (typeof window === "undefined" || !supabaseConfigured) return null;
-  if (window.localStorage.getItem(MIGRATION_KEY)) return null;
+  if (!force && window.localStorage.getItem(MIGRATION_KEY)) return null;
 
   const summary: LegacySummary = { products: 0, categories: 0, orders: 0, siteSettings: false, stories: 0 };
   const localCategories = readJson<LocalCategory[]>("topchamal-local-categories", []);
