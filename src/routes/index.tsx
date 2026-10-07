@@ -29,7 +29,7 @@ import {
   loadStorefrontProducts,
   type StorefrontProduct,
 } from "@/lib/storefront";
-import { getActiveLocalStories, getLocalSiteSettings, type LocalStory } from "@/lib/local-store";
+import { defaultSiteSettings, getActiveLocalStories, getLocalSiteSettings, pullSiteContent, type LocalStory } from "@/lib/local-store";
 const brandLogo = "/topchamal-logo.jpg";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -81,7 +81,7 @@ function PictureView({
   );
 }
 export function Storefront() {
-  const siteSettings = getLocalSiteSettings();
+  const [siteSettings, setSiteSettings] = useState(defaultSiteSettings);
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
   const [scrolled, setScrolled] = useState(false);
   const [orderError, setOrderError] = useState("");
@@ -114,6 +114,11 @@ export function Storefront() {
     }
     setLoaded(true);
     setStories(getActiveLocalStories());
+    setSiteSettings(getLocalSiteSettings());
+    void pullSiteContent().then(() => {
+      setStories(getActiveLocalStories());
+      setSiteSettings(getLocalSiteSettings());
+    });
     const t = setInterval(() => setNow(Date.now()), 1000);
     setNow(Date.now());
     return () => clearInterval(t);
