@@ -200,16 +200,18 @@ export function getLocalProducts(): LocalProduct[] {
     return [];
   }
   const existing = read<LocalProduct[]>(PRODUCTS_KEY, []);
-  if (typeof window !== "undefined" && !window.localStorage.getItem(CATALOG_SEEDED_KEY)) {
-    const merged = [
-      ...existing,
-      ...starterProducts.filter((seed) => !existing.some((item) => item.id === seed.id)),
-    ];
+  // Keep only products that are part of the current published source catalog.
+  // This removes stale products from older browser sessions while preserving
+  // local edits such as price, stock, and publication status.
+  const merged = starterProducts.map((seed) => {
+    const saved = existing.find((item) => item.id === seed.id);
+    return saved ? { ...seed, ...saved } : seed;
+  });
+  if (typeof window !== "undefined") {
     write(PRODUCTS_KEY, merged);
-    window.localStorage.setItem(CATALOG_SEEDED_KEY, "1");
-    return merged;
+    window.localStorage.setItem(CATALOG_SEEDED_KEY, "published-v2");
   }
-  return existing.length ? existing : starterProducts;
+  return merged;
 }
 export function saveLocalProducts(products: LocalProduct[]) {
   write(PRODUCTS_KEY, products);
