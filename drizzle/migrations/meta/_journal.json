@@ -36,6 +36,13 @@
       "when": 1790950200000,
       "tag": "0004_disable_initial_admin_claim",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791392472924,
+      "tag": "0005_site_content",
+      "breakpoints": true
     }
   ]
 }
