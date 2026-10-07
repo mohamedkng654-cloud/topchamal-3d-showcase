@@ -1444,6 +1444,7 @@ function AdminProducts() {
             <table className="admin-table">
               <thead>
                 <tr>
+                  <th>الصورة</th>
                   <th>المنتج</th>
                   <th>السعر</th>
                   <th>المخزون</th>
@@ -1454,6 +1455,23 @@ function AdminProducts() {
               <tbody>
                 {filteredProducts.map((product) => (
                   <tr key={product.id}>
+                    <td className="admin-product-image-cell">
+                      {product.image_urls?.[0] ? (
+                        <img
+                          className="admin-product-thumb"
+                          src={product.image_urls[0]}
+                          alt={`صورة ${product.name}`}
+                          loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                            event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                          }}
+                        />
+                      ) : null}
+                      <span className="admin-product-thumb-placeholder" hidden={Boolean(product.image_urls?.[0])}>
+                        <ImagePlus size={19} />
+                      </span>
+                    </td>
                     <td>
                       <strong>{product.name}</strong>
                       <small>

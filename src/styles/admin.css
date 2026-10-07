@@ -651,6 +651,26 @@
   margin-top: 4px;
   font-size: 11px;
 }
+.admin-product-image-cell {
+  width: 64px;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+.admin-product-thumb,
+.admin-product-thumb-placeholder {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid #eadfd5;
+  background: linear-gradient(145deg, #fffaf5, #f1e6dc);
+  color: #bb7a4c;
+}
+.admin-product-thumb {
+  object-fit: cover;
+}
 .admin-heading-actions,
 .admin-toolbar,
 .admin-toolbar-filters,
