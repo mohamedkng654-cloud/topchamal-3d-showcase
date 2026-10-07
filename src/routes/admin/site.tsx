@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, Save, Store } from "lucide-react";
-import { defaultSiteSettings, getLocalSiteSettings, saveLocalSiteSettings, type LocalSiteSettings } from "@/lib/local-store";
+import { defaultSiteSettings, getLocalSiteSettings, saveLocalSiteSettings, type LocalSiteSettings, pullSiteContent } from "@/lib/local-store";
 
 export const Route = createFileRoute("/admin/site")({ component: AdminSiteSettings });
 
 function AdminSiteSettings() {
   const [settings, setSettings] = useState<LocalSiteSettings>(() => getLocalSiteSettings());
   const [notice, setNotice] = useState("");
+  useEffect(() => { void pullSiteContent().then(() => setSettings(getLocalSiteSettings())); }, []);
   const [heroOpen, setHeroOpen] = useState(true);
   const [salesOpen, setSalesOpen] = useState(true);
   function update(field: keyof LocalSiteSettings, value: string) { setSettings((current) => ({ ...current, [field]: value })); }
