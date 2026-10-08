@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
-import { CATALOG_EMPTY } from "@/lib/local-store";
+import { CATALOG_EMPTY, getLocalCategories } from "@/lib/local-store";
 import { generateProductMetadata, scanProductImage } from "@/lib/admin-ai.functions";
 
 export const Route = createFileRoute("/admin/products")({ component: AdminProducts });
@@ -278,7 +278,9 @@ function AdminProducts() {
       page += 1;
     }
     const categoryResult = await categoryPromise;
-    if (productError) setError(productError);
+    if (productError || categoryResult.error) {
+      setError(productError || categoryResult.error?.message || "تعذر تحميل بيانات الكتالوج.");
+    }
     setProducts(allProducts);
     setCategories((categoryResult.data as Category[]) || []);
     setLoading(false);
@@ -499,9 +501,9 @@ function AdminProducts() {
     if (
       !Number.isFinite(price) ||
       (!form.price_mad ? false : price < 0) ||
-      (discount !== null && (!Number.isFinite(discount) || discount < 0))
+      (discount !== null && (!Number.isFinite(discount) || discount < 0 || !form.price_mad || discount > price))
     ) {
-      setError("تحقق من قيم الأسعار.");
+      setError("تحقق من قيم الأسعار: سعر التخفيض يجب أن يكون أقل من أو مساوياً للسعر الأساسي.");
       return;
     }
     if (!Number.isInteger(stock) || stock < 0) {

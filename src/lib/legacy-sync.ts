@@ -1,9 +1,12 @@
 import { defaultSiteSettings, type LocalOrder, type LocalProduct, type LocalCategory } from "@/lib/local-store";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
+import type { Json } from "@/integrations/supabase/types";
 
 const MIGRATION_KEY = "topchamal-legacy-local-sync-v1";
-const PRODUCT_STATUSES = new Set(["draft", "published", "archived"]);
-const ORDER_STATUSES = new Set(["new", "confirmed", "preparing", "shipped", "delivered", "cancelled"]);
+type ProductStatus = "draft" | "published" | "archived";
+type OrderStatus = "new" | "confirmed" | "preparing" | "shipped" | "delivered" | "cancelled";
+const PRODUCT_STATUSES = new Set<ProductStatus>(["draft", "published", "archived"]);
+const ORDER_STATUSES = new Set<OrderStatus>(["new", "confirmed", "preparing", "shipped", "delivered", "cancelled"]);
 
 type LegacySummary = {
   products: number;
@@ -91,6 +94,9 @@ export async function migrateLegacyLocalAdminData(
       const categoryValue = asString(product.category_id);
       const categorySlug = categoryValue.replace(/^category-/, "");
       const status = asString(product.status, "draft");
+      const safeStatus: ProductStatus = PRODUCT_STATUSES.has(status as ProductStatus)
+        ? (status as ProductStatus)
+        : "draft";
       return {
         name: asString(product.name, asString(product.slug || product.id)),
         slug: asString(product.slug || product.id),
@@ -103,7 +109,7 @@ export async function migrateLegacyLocalAdminData(
         stock: Math.max(0, Math.trunc(asNumber(product.stock))),
         sku: product.sku || null,
         brand: product.brand || null,
-        status: PRODUCT_STATUSES.has(status) ? status : "draft",
+        status: safeStatus,
         is_featured: product.is_featured === true,
         tags: Array.isArray(product.tags) ? product.tags.filter(Boolean).map(String).slice(0, 12) : [],
       };
@@ -140,7 +146,7 @@ export async function migrateLegacyLocalAdminData(
   if (Array.isArray(localStories) && localStories.length) {
     const result = await supabase.from("site_content").upsert({
       key: "stories",
-      value: localStories,
+      value: localStories as Json,
       updated_at: new Date().toISOString(),
     });
     if (result.error) throw result.error;
@@ -155,6 +161,9 @@ export async function migrateLegacyLocalAdminData(
     .filter((order) => order && asString(order.order_number || order.orderNumber))
     .map((order, index) => {
       const status = asString(order.status, "new");
+      const safeStatus: OrderStatus = ORDER_STATUSES.has(status as OrderStatus)
+        ? (status as OrderStatus)
+        : "new";
       return {
         order_number: asString(order.order_number || order.orderNumber, `LOCAL-${index + 1}`),
         customer_name: asString(order.customer_name || order.name, "عميل المتجر"),
@@ -166,7 +175,7 @@ export async function migrateLegacyLocalAdminData(
         delivery_fee_mad: 0,
         total_mad: Math.max(0, asNumber(order.total_mad ?? order.total)),
         payment_method: asString(order.payment_method, "cash_on_delivery"),
-        status: ORDER_STATUSES.has(status) ? status : "new",
+        status: safeStatus,
         created_at: asString(order.created_at || order.createdAt, new Date().toISOString()),
       };
     });

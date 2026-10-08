@@ -162,6 +162,20 @@ function AdminOrders() {
   async function saveOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!editing || !form) return;
+    const normalizedPhone = form.phone.trim().replace(/[^0-9+]/g, "");
+    const normalizedTotal = Number(form.total_mad);
+    if (!form.order_number.trim() || !form.customer_name.trim() || !form.city?.trim()) {
+      setError("رقم الطلب واسم العميل والمدينة حقول مطلوبة.");
+      return;
+    }
+    if (!/^(0[567][0-9]{8}|\+?212[567][0-9]{8})$/.test(normalizedPhone)) {
+      setError("أدخل رقم هاتف مغربي صالحاً.");
+      return;
+    }
+    if (!Number.isFinite(normalizedTotal) || normalizedTotal < 0) {
+      setError("يجب أن يكون مجموع الطلب رقماً غير سالب.");
+      return;
+    }
     setSaving(true);
     setError("");
     if (!supabaseConfigured) {
@@ -169,11 +183,11 @@ function AdminOrders() {
         ...form,
         order_number: form.order_number.trim(),
         customer_name: form.customer_name.trim(),
-        phone: form.phone.trim(),
+        phone: normalizedPhone,
         email: String(form.email || "").trim() || null,
         address: String(form.address || "").trim() || null,
         city: String(form.city || "").trim() || null,
-        total_mad: Number(form.total_mad || 0),
+        total_mad: normalizedTotal,
       });
       setSaving(false);
       setNotice(`تم تحديث الطلب ${editing.order_number}.`);
@@ -187,11 +201,11 @@ function AdminOrders() {
         ...form,
         order_number: form.order_number.trim(),
         customer_name: form.customer_name.trim(),
-        phone: form.phone.trim(),
+        phone: normalizedPhone,
         email: String(form.email || "").trim() || null,
         address: String(form.address || "").trim() || null,
         city: String(form.city || "").trim() || null,
-        total_mad: Number(form.total_mad || 0),
+        total_mad: normalizedTotal,
       })
       .eq("id", editing.id);
     setSaving(false);

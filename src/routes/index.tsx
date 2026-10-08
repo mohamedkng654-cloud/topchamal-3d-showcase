@@ -32,6 +32,7 @@ import {
   type StorefrontCategory,
   type StorefrontProduct,
 } from "@/lib/storefront";
+import { supabaseConfigured } from "@/lib/supabase";
 import { defaultSiteSettings, getActiveLocalStories, getLocalSiteSettings, pullSiteContent, subscribeToSiteContent, type LocalStory } from "@/lib/local-store";
 const brandLogo = "/topchamal-logo.jpg";
 
@@ -85,7 +86,8 @@ function PictureView({
 export function Storefront() {
   const [siteSettings, setSiteSettings] = useState(defaultSiteSettings);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categoryList, setCategoryList] = useState<StorefrontCategory[]>(categories);
+  const staticCategories = categories.map((category, index) => ({ ...category, sort_order: index }));
+  const [categoryList, setCategoryList] = useState<StorefrontCategory[]>(staticCategories);
   const [scrolled, setScrolled] = useState(false);
   const [orderError, setOrderError] = useState("");
   const [orderSubmitting, setOrderSubmitting] = useState(false);
@@ -107,7 +109,7 @@ export function Storefront() {
   const productRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const refreshProducts = () => { void loadStorefrontProducts(fallbackProducts).then(setProducts); };
-    const refreshCategories = () => { void loadStorefrontCategories(categories).then(setCategoryList); };
+    const refreshCategories = () => { void loadStorefrontCategories(staticCategories).then(setCategoryList); };
     refreshProducts();
     refreshCategories();
     try {
@@ -153,7 +155,7 @@ export function Storefront() {
     setCart((current) => current
       .map((line) => {
         const product = products.find((item) => item.id === line.id);
-        return product && product.stock > 0
+        return product && typeof product.stock === "number" && product.stock > 0
           ? { ...line, quantity: Math.min(line.quantity, product.stock) }
           : null;
       })
@@ -309,7 +311,10 @@ export function Storefront() {
     setCart((c) => c.map((x) => {
       if (x.id !== id) return x;
       const next = x.quantity + d;
-      return { ...x, quantity: typeof product?.stock === "number" ? Math.min(next, product.stock) : next };
+      return {
+        ...x,
+        quantity: typeof product?.stock === "number" ? Math.min(next, product.stock) : next,
+      };
     }).filter((x) => x.quantity > 0));
   }
   function choose(id: string) {
