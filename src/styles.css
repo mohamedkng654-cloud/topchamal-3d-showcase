@@ -142,3 +142,18 @@
   .product-preview-copy p { font-size: 12px; max-height: 75px; overflow: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .product-preview-card { animation: none; } .product-hold-hint { transition: none; } }
+
+/* Final storefront polish: accessible focus, clearer availability, and tactile feedback */
+:focus-visible{outline:2px solid var(--primary);outline-offset:4px}
+.product-card{overflow:hidden;box-shadow:0 12px 30px color-mix(in oklab,var(--background) 22%,transparent)}
+.product-card:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in oklab,var(--primary) 22%,transparent),0 18px 35px color-mix(in oklab,var(--background) 24%,transparent)}
+.product-photo{isolation:isolate}
+.product-photo:after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 55%,color-mix(in oklab,var(--primary) 12%,transparent));pointer-events:none;z-index:0}
+.product-photo img{position:relative;z-index:1}
+.product-photo.is-out-of-stock img{filter:grayscale(.75);opacity:.56}
+.stock-badge{position:absolute;bottom:12px;right:12px;z-index:3;padding:7px 10px;background:color-mix(in oklab,var(--background) 88%,transparent);border:1px solid var(--border);color:var(--foreground);font-size:10px;font-weight:700}
+.add-btn:disabled{background:var(--muted);border-color:var(--border);color:var(--muted-foreground)}
+.qty button:disabled{opacity:.4;cursor:not-allowed}
+.drawer{backdrop-filter:blur(18px)}
+.checkout-error{padding:11px 13px;border:1px solid color-mix(in oklab,var(--destructive) 55%,transparent);background:color-mix(in oklab,var(--destructive) 12%,transparent);color:var(--foreground);font-size:12px;line-height:1.7}
+@media(max-width:700px){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.product-info{padding:13px}.product-info h3{font-size:12px;min-height:38px}.product-price{font-size:15px}.add-btn{width:35px;height:35px}.stock-badge{font-size:9px;right:8px;bottom:8px}}

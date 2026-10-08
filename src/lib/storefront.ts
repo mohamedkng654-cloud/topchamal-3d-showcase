@@ -32,7 +32,7 @@ type CatalogRow = {
   categories: { slug: string } | { slug: string }[] | null;
 };
 
-const fallbackImage = "/favicon.png";
+const fallbackImage = "/topchamal-logo.jpg";
 
 export async function loadStorefrontCategories(
   fallback: StorefrontCategory[],

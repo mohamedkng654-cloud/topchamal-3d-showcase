@@ -149,6 +149,17 @@ export function Storefront() {
     if (loaded) localStorage.setItem("topchamal-cart", JSON.stringify(cart));
   }, [cart, loaded]);
   useEffect(() => {
+    if (!products.length) return;
+    setCart((current) => current
+      .map((line) => {
+        const product = products.find((item) => item.id === line.id);
+        return product && product.stock > 0
+          ? { ...line, quantity: Math.min(line.quantity, product.stock) }
+          : null;
+      })
+      .filter((line): line is CartLine => Boolean(line && line.quantity > 0)));
+  }, [products]);
+  useEffect(() => {
     if (storyViewerIndex === null) return;
     document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
@@ -262,8 +273,17 @@ export function Storefront() {
     0,
   );
   function add(p: Product) {
+    if (typeof p.stock === "number" && p.stock < 1) {
+      setOrderError("هذا المنتج غير متوفر حالياً.");
+      setDrawer(true);
+      return;
+    }
     setCart((c) => {
       const found = c.find((x) => x.id === p.id);
+      if (found && typeof p.stock === "number" && found.quantity >= p.stock) {
+        setOrderError("لا يمكن إضافة كمية أكبر من المخزون المتاح.");
+        return c;
+      }
       return found
         ? c.map((x) => (x.id === p.id ? { ...x, quantity: x.quantity + 1 } : x))
         : [...c, { id: p.id, quantity: 1 }];
@@ -285,11 +305,12 @@ export function Storefront() {
     }, 420);
   }
   function qty(id: string, d: number) {
-    setCart((c) =>
-      c
-        .map((x) => (x.id === id ? { ...x, quantity: x.quantity + d } : x))
-        .filter((x) => x.quantity > 0),
-    );
+    const product = products.find((item) => item.id === id);
+    setCart((c) => c.map((x) => {
+      if (x.id !== id) return x;
+      const next = x.quantity + d;
+      return { ...x, quantity: typeof product?.stock === "number" ? Math.min(next, product.stock) : next };
+    }).filter((x) => x.quantity > 0));
   }
   function choose(id: string) {
     setActive(id);
@@ -318,6 +339,7 @@ export function Storefront() {
     const localOrderNumber = `TC-${Date.now().toString(36).toUpperCase()}`;
     let orderNumber = localOrderNumber;
     let orderTotal = total;
+    let backendOrderCreated = false;
     try {
       const result = await createStorefrontOrder({
         name,
@@ -327,8 +349,18 @@ export function Storefront() {
       });
       orderNumber = result.order_number;
       orderTotal = Number(result.total_mad);
-    } catch {
-      // The storefront must remain usable when no backend has been configured.
+      backendOrderCreated = true;
+    } catch (submitError) {
+      if (supabaseConfigured) {
+        setOrderError(
+          submitError instanceof Error
+            ? `تعذر حفظ الطلب في النظام: ${submitError.message}`
+            : "تعذر حفظ الطلب في النظام. حاول مرة أخرى.",
+        );
+        setOrderSubmitting(false);
+        return;
+      }
+      // Local fallback is only allowed when the site intentionally has no backend.
       try {
         const saved = JSON.parse(localStorage.getItem("topchamal-local-orders") || "[]");
         const orders = Array.isArray(saved) ? saved : [];
@@ -359,6 +391,7 @@ export function Storefront() {
     else {
       setCart([]);
       setCheckout(false);
+      if (!backendOrderCreated) setOrderError("تم تجهيز الطلب للتواصل عبر واتساب.");
     }
     setOrderSubmitting(false);
   }
@@ -657,7 +690,7 @@ export function Storefront() {
                   }}
                 >
                   <div
-                    className="product-photo"
+                    className={`product-photo ${p.stock === 0 ? "is-out-of-stock" : ""}`}
                     onPointerDown={(event) => {
                       if (event.pointerType !== "mouse") startProductHold(p);
                     }}
@@ -681,6 +714,7 @@ export function Storefront() {
                       }}
                     />
                     <span className="product-hold-hint">اضغط مطولاً للمعاينة</span>
+                    {p.stock === 0 && <span className="stock-badge">غير متوفر حالياً</span>}
                   </div>
                   <div className="product-info">
                     <span className="tag">{categoryName(p.category)}</span>
@@ -695,6 +729,7 @@ export function Storefront() {
                         size="icon"
                         aria-label={`أضف ${p.name} إلى السلة`}
                         onClick={() => add(p)}
+                        disabled={p.stock === 0}
                       >
                         <Plus size={18} />
                       </Button>
@@ -961,7 +996,7 @@ export function Storefront() {
                         <strong>{p.name}</strong>
                         <span>{formatPrice(p.price * line.quantity)} د.م</span>
                         <div className="qty">
-                          <Button aria-label={`زيادة ${p.name}`} onClick={() => qty(p.id, 1)}>
+                          <Button aria-label={`زيادة ${p.name}`} onClick={() => qty(p.id, 1)} disabled={typeof p.stock === "number" && line.quantity >= p.stock}>
                             <Plus size={13} />
                           </Button>
                           <span className="num">{line.quantity}</span>

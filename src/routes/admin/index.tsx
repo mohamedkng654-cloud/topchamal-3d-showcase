@@ -39,10 +39,12 @@ const money = (value: number) =>
 function AdminDashboard() {
   const [metrics, setMetrics] = useState(emptyMetrics);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   useEffect(() => {
     void loadMetrics();
   }, []);
   async function loadMetrics() {
+    setError("");
     if (!supabaseConfigured) {
       const orders = getLocalOrders() as Array<{
         total_mad?: number;
@@ -67,8 +69,7 @@ function AdminDashboard() {
       setLoading(false);
       return;
     }
-    const [{ data: orders }, { count: customers }, { count: products }, { count: lowStock }] =
-      await Promise.all([
+    const [ordersResult, customersResult, productsResult, lowStockResult] = await Promise.all([
         supabase.from("orders").select("total_mad,status"),
         supabase.from("customers").select("*", { count: "exact", head: true }),
         supabase.from("products").select("*", { count: "exact", head: true }),
@@ -78,7 +79,9 @@ function AdminDashboard() {
           .lt("stock", 5)
           .eq("status", "published"),
       ]);
-    const orderRows = orders || [];
+    const firstError = ordersResult.error || customersResult.error || productsResult.error || lowStockResult.error;
+    if (firstError) setError(`تعذر تحميل بعض مؤشرات لوحة التحكم: ${firstError.message}`);
+    const orderRows = ordersResult.data || [];
     setMetrics({
       revenue: orderRows
         .filter((order) => order.status !== "cancelled")
@@ -87,9 +90,9 @@ function AdminDashboard() {
       pending: orderRows.filter((order) => ["new", "confirmed", "preparing"].includes(order.status))
         .length,
       delivered: orderRows.filter((order) => order.status === "delivered").length,
-      customers: customers || 0,
-      products: products || 0,
-      lowStock: lowStock || 0,
+      customers: customersResult.count || 0,
+      products: productsResult.count || 0,
+      lowStock: lowStockResult.count || 0,
     });
     setLoading(false);
   }
@@ -124,6 +127,7 @@ function AdminDashboard() {
           تحديث البيانات <ArrowUpLeft size={16} />
         </button>
       </div>
+      {error && <div className="admin-alert error" role="alert">{error}</div>}
       <div className="metric-grid">
         {cards.map(({ label, value, icon: Icon, tone }) => (
           <article className={`metric-card ${tone}`} key={label}>
