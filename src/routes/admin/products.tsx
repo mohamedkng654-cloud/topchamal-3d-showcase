@@ -16,7 +16,7 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
 import { CATALOG_EMPTY } from "@/lib/local-store";
-import { generateProductMetadata } from "@/lib/admin-ai.functions";
+import { generateProductMetadata, scanProductImage } from "@/lib/admin-ai.functions";
 
 export const Route = createFileRoute("/admin/products")({ component: AdminProducts });
 
@@ -186,6 +186,7 @@ function AdminProducts() {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [imageScanLoading, setImageScanLoading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState("");
   const [aiSettings, setAiSettings] = useState<AISettings>(readAISettings);
   const [catalogName, setCatalogName] = useState("");
@@ -349,9 +350,43 @@ function AdminProducts() {
       setError("حجم الصورة يجب أن يكون أقل من 4 ميغابايت.");
       return;
     }
+    setImageScanLoading(true);
+    setError("");
     void imageToDataUrl(file)
-      .then((image_url) => setForm((current) => ({ ...current, image_url })))
-      .catch(() => setError("تعذر تجهيز الصورة."));
+      .then(async (image_url) => {
+        setForm((current) => ({ ...current, image_url }));
+        try {
+          const suggestion = await scanProductImage({
+            data: { imageDataUrl: image_url, categories: categories.map(({ slug, name }) => ({ slug, name })) },
+          });
+          setForm((current) => {
+            const category = categories.find((item) => item.slug === suggestion.category_slug || item.name === suggestion.category_slug);
+            const numeric = (value: string) => (/^\d+(?:[.,]\d+)?$/.test(value.trim()) ? value.trim().replace(",", ".") : "");
+            return {
+              ...current,
+              name: current.name || suggestion.name,
+              slug: current.slug || suggestion.slug || slugify(suggestion.name),
+              brand: current.brand || suggestion.brand,
+              sku: current.sku || suggestion.sku,
+              category_id: current.category_id || category?.id || "",
+              description: current.description || suggestion.description,
+              tags: current.tags || suggestion.tags.join(", "),
+              price_mad: current.price_mad || numeric(suggestion.original_price_mad) || numeric(suggestion.current_price_mad),
+              discount_price_mad: current.discount_price_mad || (numeric(suggestion.original_price_mad) && numeric(suggestion.current_price_mad) ? numeric(suggestion.current_price_mad) : ""),
+            };
+          });
+          setNotice("حلّل الذكاء الاصطناعي الصورة وملأ المعلومات الظاهرة. راجعها وأكمل الحقول الناقصة قبل الحفظ.");
+        } catch (scanError) {
+          setNotice("تم رفع الصورة. لم يكتمل التحليل الآلي؛ يمكنك تعبئة الحقول يدوياً أو إعادة المحاولة.");
+          setError(scanError instanceof Error ? scanError.message : "تعذر تحليل الصورة.");
+        } finally {
+          setImageScanLoading(false);
+        }
+      })
+      .catch(() => {
+        setImageScanLoading(false);
+        setError("تعذر تجهيز الصورة.");
+      });
   }
 
   function readBulkImageFile(index: number, file: File | undefined) {
@@ -367,6 +402,39 @@ function AdminProducts() {
         ),
       )
       .catch(() => setError("تعذر تجهيز الصورة."));
+  }
+
+  async function rescanCurrentImage() {
+    if (!form.image_url.startsWith("data:image/")) {
+      setError("ارفع صورة من الهاتف أولاً حتى يتم تحليلها.");
+      return;
+    }
+    setImageScanLoading(true);
+    setError("");
+    try {
+      const suggestion = await scanProductImage({
+        data: { imageDataUrl: form.image_url, categories: categories.map(({ slug, name }) => ({ slug, name })) },
+      });
+      const category = categories.find((item) => item.slug === suggestion.category_slug || item.name === suggestion.category_slug);
+      const numeric = (value: string) => (/^\d+(?:[.,]\d+)?$/.test(value.trim()) ? value.trim().replace(",", ".") : "");
+      setForm((current) => ({
+        ...current,
+        name: current.name || suggestion.name,
+        slug: current.slug || suggestion.slug || slugify(suggestion.name),
+        brand: current.brand || suggestion.brand,
+        sku: current.sku || suggestion.sku,
+        category_id: current.category_id || category?.id || "",
+        description: current.description || suggestion.description,
+        tags: current.tags || suggestion.tags.join(", "),
+        price_mad: current.price_mad || numeric(suggestion.original_price_mad) || numeric(suggestion.current_price_mad),
+        discount_price_mad: current.discount_price_mad || (numeric(suggestion.original_price_mad) && numeric(suggestion.current_price_mad) ? numeric(suggestion.current_price_mad) : ""),
+      }));
+      setNotice("اكتمل تحليل الصورة. راجع النتائج وعدّلها قبل حفظ المنتج.");
+    } catch (scanError) {
+      setError(scanError instanceof Error ? scanError.message : "تعذر تحليل الصورة.");
+    } finally {
+      setImageScanLoading(false);
+    }
   }
 
   async function saveCatalog() {
@@ -1384,7 +1452,13 @@ function AdminProducts() {
               accept="image/*"
               onChange={(event) => readImageFile(event.target.files?.[0])}
             />
-            <small>يمكنك رفع صورة من الهاتف أو لصق رابط صورة.</small>
+            <div className="product-image-ai-actions">
+              <small>{imageScanLoading ? "جار تحليل الصورة وقراءة المعلومات الظاهرة..." : "بعد رفع الصورة، سيملأ AI الاسم والعلامة والوصف والسعر الظاهر والوسوم تلقائياً."}</small>
+              <button type="button" className="admin-secondary-button ai-button" onClick={() => void rescanCurrentImage()} disabled={imageScanLoading || !form.image_url.startsWith("data:image/")}>
+                <Sparkles size={14} /> {imageScanLoading ? "جار التحليل..." : "إعادة تحليل الصورة"}
+              </button>
+            </div>
+            <small>راجع كل اقتراح يدوياً؛ السعر والمخزون والمعلومات غير الظاهرة في الصورة تبقى قابلة للتعبئة والتعديل.</small>
           </label>
           <label className="admin-form-wide">
             <span>الوصف</span>
