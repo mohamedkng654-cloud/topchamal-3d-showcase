@@ -13,9 +13,14 @@ export async function saveSharedContent(key: string, value: unknown): Promise<vo
   const { error } = await supabase.from("site_content").upsert({ key, value: value as import("@/integrations/supabase/types").Json, updated_at: new Date().toISOString() });
   if (error) throw new Error("تعذر حفظ التغييرات لجميع الزوار. حاول مرة أخرى.");
 }
+async function loadSharedStories(): Promise<LocalStory[]> {
+  const { data, error } = await supabase.from("store_stories").select("id,content,is_active,expires_at,created_at").order("created_at", { ascending: false });
+  if (error) throw new Error("تعذر تحميل القصص.");
+  return (data || []).map((row) => ({ ...(row.content as unknown as LocalStory), id: row.id, is_active: row.is_active, expires_at: row.expires_at, created_at: row.created_at }));
+}
 export async function pullSiteContent(): Promise<void> {
   const [settings, stories] = await Promise.all([
-    readSharedContent<LocalSiteSettings>("site_settings"), readSharedContent<LocalStory[]>("stories"),
+    readSharedContent<LocalSiteSettings>("site_settings"), loadSharedStories(),
   ]);
   sharedSettings = settings || {};
   sharedStories = stories || [];
@@ -27,6 +32,9 @@ export function subscribeToSiteContent(onChange: () => void) {
     .channel("topchamal-public-content")
     .on("postgres_changes", { event: "*", schema: "public", table: "site_content" }, () => {
       void pullSiteContent().then(onChange).catch((error) => console.error("[Site] Shared content refresh failed", error));
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "store_stories" }, () => {
+      void pullSiteContent().then(onChange).catch((error) => console.error("[Site] Story refresh failed", error));
     })
     .subscribe();
   return () => { void supabase.removeChannel(channel); };
@@ -291,25 +299,20 @@ export async function upsertLocalStory(
     id: story.id || id("story"),
     created_at: story.created_at || new Date().toISOString(),
   };
-  const index = stories.findIndex((item) => item.id === saved.id);
-  const nextStories = [...stories];
-  if (index >= 0) nextStories[index] = saved;
-  else nextStories.unshift(saved);
-  await saveSharedContent("stories", nextStories);
-  sharedStories = nextStories;
+  const { error } = await supabase.from("store_stories").upsert({ id: saved.id, content: saved as unknown as import("@/integrations/supabase/types").Json, is_active: saved.is_active, expires_at: saved.expires_at, created_at: saved.created_at });
+  if (error) throw new Error("تعذر حفظ القصة لجميع الزوار.");
+  await pullSiteContent();
   return saved;
 }
 export async function updateLocalStory(idValue: string, patch: Partial<LocalStory>): Promise<void> {
+  const { error } = await supabase.from("store_stories").update({ ...(patch.is_active !== undefined ? { is_active: patch.is_active } : {}) }).eq("id", idValue).select("id").single();
+  if (error) throw new Error("تعذر تحديث القصة.");
   await pullSiteContent();
-  const stories = getLocalStories().map((story) => (story.id === idValue ? { ...story, ...patch } : story));
-  await saveSharedContent("stories", stories);
-  sharedStories = stories;
 }
 export async function deleteLocalStory(idValue: string): Promise<void> {
+  const { error } = await supabase.from("store_stories").delete().eq("id", idValue).select("id").single();
+  if (error) throw new Error("تعذر حذف القصة.");
   await pullSiteContent();
-  const stories = getLocalStories().filter((story) => story.id !== idValue);
-  await saveSharedContent("stories", stories);
-  sharedStories = stories;
 }
 export function getLocalOrders(): LocalOrder[] {
   return read<LocalOrder[]>(ORDERS_KEY, []).map((order, index) => ({

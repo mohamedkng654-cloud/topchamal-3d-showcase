@@ -3,31 +3,45 @@ import { useEffect, useState } from "react";
 import { ChevronDown, Save, Store } from "lucide-react";
 import { defaultSiteSettings, getLocalSiteSettings, saveLocalSiteSettings, type LocalSiteSettings, pullSiteContent } from "@/lib/local-store";
 
-export const Route = createFileRoute("/admin/site")({ component: AdminSiteSettings });
+import { adminHead, subscribeAdminData } from "@/lib/shared-admin";
+
+export const Route = createFileRoute("/admin/site")({ component: AdminSiteSettings, head: () => adminHead("محتوى الموقع", "إدارة محتوى متجر TopChamal وبيانات التواصل المشتركة.") });
 
 function AdminSiteSettings() {
-  const [settings, setSettings] = useState<LocalSiteSettings>(() => getLocalSiteSettings());
+  const [settings, setSettings] = useState<LocalSiteSettings>(defaultSiteSettings);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  useEffect(() => { void pullSiteContent().then(() => setSettings(getLocalSiteSettings())); }, []);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    const refresh = () => { void pullSiteContent().then(() => setSettings(getLocalSiteSettings())).catch(() => setError("تعذر تحميل محتوى المتجر.")).finally(() => setLoading(false)); };
+    refresh();
+    return subscribeAdminData(["site_content"], refresh);
+  }, []);
   const [heroOpen, setHeroOpen] = useState(true);
   const [salesOpen, setSalesOpen] = useState(true);
   function update(field: keyof LocalSiteSettings, value: string) { setSettings((current) => ({ ...current, [field]: value })); }
   async function save() {
     setError("");
-    try { await saveLocalSiteSettings(settings); setNotice("تم حفظ معلومات الموقع لجميع الزوار."); }
+    setNotice("");
+    if (!/^\+?212[567]\d{8}$/.test(settings.whatsapp.replace(/\s/g, ""))) { setError("أدخل رقم واتساب مغربي صالحاً."); return; }
+    setSaving(true);
+    try { await saveLocalSiteSettings({ ...settings, whatsapp: settings.whatsapp.replace(/[^0-9]/g, "") }); setNotice("تم حفظ معلومات الموقع لجميع الزوار."); }
     catch (saveError) { setError(saveError instanceof Error ? saveError.message : "تعذر نشر التغييرات."); }
+    finally { setSaving(false); }
   }
   async function reset() {
-    setSettings(defaultSiteSettings);
+    if (!window.confirm("استعادة معلومات الموقع الافتراضية لجميع الزوار؟")) return;
+    setSaving(true);
     setError("");
-    try { await saveLocalSiteSettings(defaultSiteSettings); setNotice("تمت استعادة المعلومات الافتراضية لجميع الزوار."); }
+    try { await saveLocalSiteSettings(defaultSiteSettings); setSettings(defaultSiteSettings); setNotice("تمت استعادة المعلومات الافتراضية لجميع الزوار."); }
     catch (saveError) { setError(saveError instanceof Error ? saveError.message : "تعذر نشر التغييرات."); }
+    finally { setSaving(false); }
   }
   return <section className="dashboard-page">
     <div className="dashboard-heading"><div><span className="admin-eyebrow">إعدادات الموقع</span><h2>محتوى المتجر</h2><p>عدّل النصوص والمعلومات التي تظهر للزوار في الصفحة الرئيسية.</p></div><Store size={28} /></div>
     {(notice || error) && <div className={`admin-alert ${error ? "error" : "success"}`}>{error || notice}</div>}
-    <section className="dashboard-panel">
+    <fieldset className="dashboard-panel" disabled={loading || saving}>
       <div className="panel-heading"><div><span className="admin-eyebrow">الواجهة الرئيسية</span><h3>العنوان والرسالة الترحيبية</h3></div><button type="button" className="admin-collapse-button" onClick={() => setHeroOpen((open) => !open)} aria-expanded={heroOpen}><ChevronDown size={15} className={heroOpen ? "" : "is-collapsed"} />{heroOpen ? "إخفاء" : "إظهار"}</button></div>
       {heroOpen && <div className="admin-form-grid">
         <label><span>اسم المتجر</span><input value={settings.brandName} onChange={(e) => update("brandName", e.target.value)} /></label>
@@ -36,8 +50,8 @@ function AdminSiteSettings() {
         <label><span>الكلمة المميزة</span><input value={settings.heroTitleAccent} onChange={(e) => update("heroTitleAccent", e.target.value)} /></label>
         <label className="admin-form-wide"><span>وصف الصفحة الرئيسية</span><textarea value={settings.heroDescription} onChange={(e) => update("heroDescription", e.target.value)} /></label>
       </div>}
-    </section>
-    <section className="dashboard-panel">
+    </fieldset>
+    <fieldset className="dashboard-panel" disabled={loading || saving}>
       <div className="panel-heading"><div><span className="admin-eyebrow">محتوى البيع</span><h3>العروض، الثقة، والتواصل</h3></div><button type="button" className="admin-collapse-button" onClick={() => setSalesOpen((open) => !open)} aria-expanded={salesOpen}><ChevronDown size={15} className={salesOpen ? "" : "is-collapsed"} />{salesOpen ? "إخفاء" : "إظهار"}</button></div>
       {salesOpen && <div className="admin-form-grid">
         <label><span>عنوان قسم لماذا نحن</span><input value={settings.aboutTitle} onChange={(e) => update("aboutTitle", e.target.value)} /></label>
@@ -46,7 +60,7 @@ function AdminSiteSettings() {
         <label><span>رقم واتساب الدولي</span><input dir="ltr" value={settings.whatsapp} onChange={(e) => update("whatsapp", e.target.value)} /></label>
         <label className="admin-form-wide"><span>وصف أسفل الموقع</span><textarea value={settings.footerDescription} onChange={(e) => update("footerDescription", e.target.value)} /></label>
       </div>}
-      {salesOpen && <div className="admin-form-actions"><button type="button" className="admin-primary-button" onClick={save}><Save size={16} /> حفظ معلومات الموقع</button><button type="button" className="admin-secondary-button" onClick={reset}>استعادة الافتراضي</button></div>}
-    </section>
+      {salesOpen && <div className="admin-form-actions"><button type="button" className="admin-primary-button" onClick={save}><Save size={16} /> {saving ? "جارٍ الحفظ..." : "حفظ معلومات الموقع"}</button><button type="button" className="admin-secondary-button" onClick={reset}>استعادة الافتراضي</button></div>}
+    </fieldset>
   </section>;
 }
