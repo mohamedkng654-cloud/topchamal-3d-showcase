@@ -50,7 +50,6 @@ async def main():
             public = {'apikey':connection['apikey']}
             response = await context.request.get(base + path, headers=public)
             assert response.status in (401,403) or (response.ok and await response.json() == []), 'Public must not access dates'
-            # A signed-in non-admin must also see no dates (database policy checked separately).
             await api('PATCH', 'products?id=eq.'+product_id, {'status':'draft'})
             await api('PATCH', 'products?id=eq.'+product_id, {'status':'published','price_mad':12})
             assert (await api('GET',path))[0]['published_at'] == first_date, 'Republishing must preserve first date'
