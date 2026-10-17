@@ -10,5 +10,6 @@
 <!-- LOVABLE:END -->
 
 - Keep the TanStack preview and separate Vite static export using one storefront component, so the storefront can deploy to ordinary static hosts without a runtime server.
+- Store first-publication timestamps in an admin-readable-only related table and record them via a product-status trigger, so public catalog access never exposes private dates and every publishing path is covered.
 - Keep public product data in JSON and media in local asset pointers, so merchandising does not depend on the original store at runtime.
 - Use WhatsApp's prefilled share flow until a confirmed store phone number is supplied, to avoid sending orders to an invented recipient.

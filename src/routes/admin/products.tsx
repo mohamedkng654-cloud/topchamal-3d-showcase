@@ -18,7 +18,17 @@ import { supabase, supabaseConfigured } from "@/lib/supabase";
 import { CATALOG_EMPTY, getLocalCategories } from "@/lib/local-store";
 import { generateProductMetadata, scanProductImage } from "@/lib/admin-ai.functions";
 
-export const Route = createFileRoute("/admin/products")({ component: AdminProducts });
+export const Route = createFileRoute("/admin/products")({
+  component: AdminProducts,
+  head: () => ({ meta: [
+    { title: "TopChamal | إدارة المنتجات" },
+    { name: "description", content: "إدارة منتجات TopChamal وتواريخ نشرها الخاصة بالمدير." },
+    { property: "og:title", content: "TopChamal | إدارة المنتجات" },
+    { property: "og:description", content: "إدارة منتجات TopChamal وتواريخ نشرها الخاصة بالمدير." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
+});
 
 type ProductStatus = "draft" | "published" | "archived";
 type Category = { id: string; name: string; slug: string };
@@ -172,6 +182,7 @@ function toForm(product: Product): ProductForm {
 
 function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [publicationDates, setPublicationDates] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<Category[]>([]);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -277,9 +288,19 @@ function AdminProducts() {
       if (!result.data || result.data.length < pageSize) break;
       page += 1;
     }
+    const dates: Record<string, string> = {};
+    let dateError: string | null = null;
+    for (let offset = 0; ; offset += pageSize) {
+      const result = await supabase.from("product_publication_dates")
+        .select("product_id,published_at").order("product_id").range(offset, offset + pageSize - 1);
+      if (result.error) { dateError = result.error.message; break; }
+      for (const row of result.data || []) dates[row.product_id] = row.published_at;
+      if (!result.data || result.data.length < pageSize) break;
+    }
+    setPublicationDates(dates);
     const categoryResult = await categoryPromise;
-    if (productError || categoryResult.error) {
-      setError(productError || categoryResult.error?.message || "تعذر تحميل بيانات الكتالوج.");
+    if (productError || categoryResult.error || dateError) {
+      setError(productError || categoryResult.error?.message || dateError || "تعذر تحميل بيانات الكتالوج.");
     }
     setProducts(allProducts);
     setCategories((categoryResult.data as Category[]) || []);
@@ -1525,6 +1546,7 @@ function AdminProducts() {
                   <th>السعر</th>
                   <th>المخزون</th>
                   <th>الحالة</th>
+                  <th>تاريخ النشر</th>
                   <th>إجراءات</th>
                 </tr>
               </thead>
@@ -1568,6 +1590,16 @@ function AdminProducts() {
                       <span className={`status-pill ${product.status}`}>
                         {statusLabels[product.status]}
                       </span>
+                    </td>
+                    <td>
+                      {publicationDates[product.id] ? (
+                        <time dateTime={publicationDates[product.id]}>
+                          {new Date(publicationDates[product.id] ?? "").toLocaleString("ar-MA", {
+                            timeZone: "Africa/Casablanca", year: "numeric", month: "2-digit", day: "2-digit",
+                            hour: "2-digit", minute: "2-digit",
+                          })}
+                        </time>
+                      ) : product.status === "draft" ? "لم يُنشر بعد" : "غير مسجل"}
                     </td>
                     <td>
                       <div className="admin-row-actions">
