@@ -326,6 +326,33 @@ export type Database = {
         }
         Relationships: []
       }
+      store_stories: {
+        Row: {
+          content: Json
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          expires_at?: string | null
+          id: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
