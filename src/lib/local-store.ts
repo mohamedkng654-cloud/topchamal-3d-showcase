@@ -1,40 +1,24 @@
 import catalog from "../data/products.json";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
 
-const CLOUD_KEYS: Record<string, string> = {
-  "topchamal-local-site-settings": "site_settings",
-  "topchamal-local-stories": "stories",
-};
-type SiteContentTable = {
-  upsert(values: Record<string, unknown>): Promise<{ error: unknown }>;
-  select(columns: string): Promise<{ data: unknown; error: unknown }>;
-};
-function siteContentTable(): SiteContentTable {
-  return (supabase as unknown as { from(table: string): SiteContentTable }).from("site_content");
+let sharedSettings: Partial<LocalSiteSettings> = {};
+let sharedStories: LocalStory[] = [];
+export async function readSharedContent<T>(key: string): Promise<T | null> {
+  const { data, error } = await supabase.from("site_content").select("value").eq("key", key).maybeSingle();
+  if (error) throw new Error("تعذر تحميل البيانات المشتركة. حاول مرة أخرى.");
+  return data ? data.value as unknown as T : null;
 }
-async function pushCloud(key: string, value: unknown): Promise<void> {
-  const cloudKey = CLOUD_KEYS[key];
-  if (!cloudKey || !supabaseConfigured) return;
-  const { error } = await siteContentTable().upsert({
-    key: cloudKey,
-    value,
-    updated_at: new Date().toISOString(),
-  });
-  if (error) throw error;
+export async function saveSharedContent(key: string, value: unknown): Promise<void> {
+  if (!supabaseConfigured) throw new Error("تعذر الاتصال بالمتجر. لم يتم حفظ التغييرات.");
+  const { error } = await supabase.from("site_content").upsert({ key, value: value as import("@/integrations/supabase/types").Json, updated_at: new Date().toISOString() });
+  if (error) throw new Error("تعذر حفظ التغييرات لجميع الزوار. حاول مرة أخرى.");
 }
-/** Pull shared site texts and stories from the backend into this browser. */
 export async function pullSiteContent(): Promise<void> {
-  if (typeof window === "undefined") return;
-  try {
-    const { data, error } = await siteContentTable().select("key,value");
-    if (error || !data) return;
-    for (const [localKey, cloudKey] of Object.entries(CLOUD_KEYS)) {
-      const row = (data as Array<{ key: string; value: unknown }>).find((r) => r.key === cloudKey);
-      if (row) window.localStorage.setItem(localKey, JSON.stringify(row.value));
-    }
-  } catch (error) {
-    console.error("[Site] Could not pull shared content", error);
-  }
+  const [settings, stories] = await Promise.all([
+    readSharedContent<LocalSiteSettings>("site_settings"), readSharedContent<LocalStory[]>("stories"),
+  ]);
+  sharedSettings = settings || {};
+  sharedStories = stories || [];
 }
 
 export function subscribeToSiteContent(onChange: () => void) {
@@ -42,7 +26,7 @@ export function subscribeToSiteContent(onChange: () => void) {
   const channel = supabase
     .channel("topchamal-public-content")
     .on("postgres_changes", { event: "*", schema: "public", table: "site_content" }, () => {
-      void pullSiteContent().then(onChange);
+      void pullSiteContent().then(onChange).catch((error) => console.error("[Site] Shared content refresh failed", error));
     })
     .subscribe();
   return () => { void supabase.removeChannel(channel); };
@@ -281,14 +265,14 @@ export function deleteLocalCategory(categoryId: string) {
   saveLocalCategories(getLocalCategories().filter((item) => item.id !== categoryId));
 }
 export function getLocalSiteSettings(): LocalSiteSettings {
-  return { ...defaultSiteSettings, ...read<Partial<LocalSiteSettings>>(SETTINGS_KEY, {}) };
+  return { ...defaultSiteSettings, ...sharedSettings };
 }
 export async function saveLocalSiteSettings(settings: LocalSiteSettings): Promise<void> {
-  write(SETTINGS_KEY, settings);
-  await pushCloud(SETTINGS_KEY, settings);
+  await saveSharedContent("site_settings", settings);
+  sharedSettings = settings;
 }
 export function getLocalStories(): LocalStory[] {
-  return read<LocalStory[]>(STORIES_KEY, []).filter(
+  return sharedStories.filter(
     (story) => story && typeof story.id === "string" && typeof story.media_url === "string",
   );
 }
@@ -300,6 +284,7 @@ export function getActiveLocalStories(now = Date.now()): LocalStory[] {
 export async function upsertLocalStory(
   story: Omit<LocalStory, "id" | "created_at"> & Partial<Pick<LocalStory, "id" | "created_at">>,
 ): Promise<LocalStory> {
+  await pullSiteContent();
   const stories = getLocalStories();
   const saved: LocalStory = {
     ...story,
@@ -310,19 +295,21 @@ export async function upsertLocalStory(
   const nextStories = [...stories];
   if (index >= 0) nextStories[index] = saved;
   else nextStories.unshift(saved);
-  await pushCloud(STORIES_KEY, nextStories);
-  write(STORIES_KEY, nextStories);
+  await saveSharedContent("stories", nextStories);
+  sharedStories = nextStories;
   return saved;
 }
 export async function updateLocalStory(idValue: string, patch: Partial<LocalStory>): Promise<void> {
+  await pullSiteContent();
   const stories = getLocalStories().map((story) => (story.id === idValue ? { ...story, ...patch } : story));
-  await pushCloud(STORIES_KEY, stories);
-  write(STORIES_KEY, stories);
+  await saveSharedContent("stories", stories);
+  sharedStories = stories;
 }
 export async function deleteLocalStory(idValue: string): Promise<void> {
+  await pullSiteContent();
   const stories = getLocalStories().filter((story) => story.id !== idValue);
-  await pushCloud(STORIES_KEY, stories);
-  write(STORIES_KEY, stories);
+  await saveSharedContent("stories", stories);
+  sharedStories = stories;
 }
 export function getLocalOrders(): LocalOrder[] {
   return read<LocalOrder[]>(ORDERS_KEY, []).map((order, index) => ({
