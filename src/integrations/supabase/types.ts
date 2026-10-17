@@ -220,6 +220,29 @@ export type Database = {
           },
         ]
       }
+      product_publication_dates: {
+        Row: {
+          product_id: string
+          published_at: string
+        }
+        Insert: {
+          product_id: string
+          published_at?: string
+        }
+        Update: {
+          product_id?: string
+          published_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_publication_dates_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           brand: string | null
