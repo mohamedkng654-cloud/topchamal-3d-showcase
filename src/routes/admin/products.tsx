@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
-import { CATALOG_EMPTY, getLocalCategories } from "@/lib/local-store";
+import { readSharedContent, saveSharedContent } from "@/lib/local-store";
+import { subscribeAdminData } from "@/lib/shared-admin";
 import { generateProductMetadata, scanProductImage } from "@/lib/admin-ai.functions";
 
 export const Route = createFileRoute("/admin/products")({
@@ -87,17 +88,6 @@ const defaultAISettings: AISettings = {
   tone: "professional",
   descriptionLength: "standard",
   tagCount: 8,
-};
-const readAISettings = (): AISettings => {
-  if (typeof window === "undefined") return defaultAISettings;
-  try {
-    return {
-      ...defaultAISettings,
-      ...JSON.parse(window.localStorage.getItem("topchamal-ai-settings") || "{}"),
-    } as AISettings;
-  } catch {
-    return defaultAISettings;
-  }
 };
 const languageLabels: Record<AISettings["language"], string> = {
   ar: "العربية",
@@ -199,7 +189,7 @@ function AdminProducts() {
   const [aiLoading, setAiLoading] = useState(false);
   const [imageScanLoading, setImageScanLoading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState("");
-  const [aiSettings, setAiSettings] = useState<AISettings>(readAISettings);
+  const [aiSettings, setAiSettings] = useState<AISettings>(defaultAISettings);
   const [catalogName, setCatalogName] = useState("");
   const [catalogSlug, setCatalogSlug] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -253,16 +243,10 @@ function AdminProducts() {
   async function loadData() {
     setLoading(true);
     setError("");
-    if (CATALOG_EMPTY) {
-      setProducts([]);
-      setCategories(getLocalCategories());
-      setLoading(false);
-      return;
-    }
     if (!supabaseConfigured) {
       setProducts([]);
       setCategories([]);
-      setError("لا يمكن حفظ تغييرات الكتالوج بشكل مشترك حتى يتم ربط Supabase.");
+      setError("لا يمكن حفظ تغييرات الكتالوج بشكل مشترك حتى يتم ربط Lovable Cloud.");
       setLoading(false);
       return;
     }
@@ -309,6 +293,8 @@ function AdminProducts() {
 
   useEffect(() => {
     void loadData();
+    void readSharedContent<AISettings>("admin_ai_settings").then((value) => { if (value) setAiSettings(value); }).catch(() => setError("تعذر تحميل إعدادات التوليد."));
+    return subscribeAdminData(["products", "categories"], () => void loadData());
   }, []);
 
   const filteredProducts = useMemo(() => {
@@ -320,7 +306,7 @@ function AdminProducts() {
         product.slug,
         product.sku || "",
         product.brand || "",
-        product.tags.join(" "),
+        (product.tags || []).join(" "),
         categories.find((category) => category.id === product.category_id)?.name || "",
       ].some((field) => field.toLowerCase().includes(value)),
     );
@@ -468,7 +454,7 @@ function AdminProducts() {
       return;
     }
     if (!supabaseConfigured) {
-      setError("لا يمكن حفظ الكتالوجات بشكل مشترك حتى يتم ربط Supabase.");
+      setError("لا يمكن حفظ الكتالوجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
       return;
     }
     const result = editingCategoryId
@@ -496,7 +482,7 @@ function AdminProducts() {
   async function removeCatalog(category: Category) {
     if (!window.confirm(`حذف الكتالوج «${category.name}»؟`)) return;
     if (!supabaseConfigured) {
-      setError("لا يمكن حذف الكتالوجات بشكل مشترك حتى يتم ربط Supabase.");
+      setError("لا يمكن حذف الكتالوجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
       return;
     }
     const result = await supabase.from("categories").delete().eq("id", category.id);
@@ -539,7 +525,7 @@ function AdminProducts() {
       price_mad: form.price_mad ? price : 0,
       discount_price_mad: discount,
       category_id: form.category_id || null,
-      image_urls: form.image_url.trim() ? [form.image_url.trim()] : [],
+      image_urls: form.image_url.trim() ? [form.image_url.trim(), ...(editingId ? (products.find((item) => item.id === editingId)?.image_urls.slice(1) || []) : [])] : [],
       stock,
       sku: form.sku.trim() || null,
       brand: form.brand.trim() || null,
@@ -553,7 +539,7 @@ function AdminProducts() {
     };
     if (!supabaseConfigured) {
       setSaving(false);
-      setError("لا يمكن حفظ المنتجات بشكل مشترك حتى يتم ربط Supabase.");
+      setError("لا يمكن حفظ المنتجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
       return;
     }
     const result = editingId
@@ -619,9 +605,9 @@ function AdminProducts() {
     setAiSettings((current) => ({ ...current, [field]: value }));
   }
 
-  function saveAISettings() {
-    window.localStorage.setItem("topchamal-ai-settings", JSON.stringify(aiSettings));
-    setNotice("تم حفظ إعدادات التوليد بالذكاء الاصطناعي.");
+  async function saveAISettings() {
+    try { await saveSharedContent("admin_ai_settings", aiSettings); setNotice("تم حفظ إعدادات التوليد لجميع المديرين."); }
+    catch { setError("تعذر حفظ إعدادات التوليد."); }
   }
 
   async function assistBulkRow(index: number) {
@@ -790,7 +776,7 @@ function AdminProducts() {
     if (!supabaseConfigured) {
       setBulkSaving(false);
       setBulkProgress("");
-      setError("لا يمكن حفظ المنتجات بشكل مشترك حتى يتم ربط Supabase.");
+      setError("لا يمكن حفظ المنتجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
       return;
     }
     for (let index = 0; index < payload.length; index += chunkSize) {
@@ -814,22 +800,20 @@ function AdminProducts() {
 
   async function setStock(product: Product, stock: number) {
     if (!supabaseConfigured) {
-      setError("لا يمكن تحديث المخزون بشكل مشترك حتى يتم ربط Supabase.");
+      setError("لا يمكن تحديث المخزون بشكل مشترك حتى يتم ربط Lovable Cloud.");
       return;
     }
     const result = await productsTable().update({ stock }).eq("id", product.id);
     if (result.error) setError(result.error.message);
     else {
       setNotice(stock === 0 ? "تم وضع المنتج خارج المخزون." : "تم تحديث المخزون.");
-      setProducts((current) =>
-        current.map((item) => (item.id === product.id ? { ...item, stock } : item)),
-      );
+      await loadData();
     }
   }
 
   async function archiveProduct(product: Product) {
     if (!supabaseConfigured) {
-      setError("لا يمكن أرشفة المنتجات بشكل مشترك حتى يتم ربط Supabase.");
+      setError("لا يمكن أرشفة المنتجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
       return;
     }
     const result = await supabase
@@ -839,9 +823,7 @@ function AdminProducts() {
     if (result.error) setError(result.error.message);
     else {
       setNotice("تم نقل المنتج إلى التخزين/الأرشيف.");
-      setProducts((current) =>
-        current.map((item) => (item.id === product.id ? { ...item, status: "archived" } : item)),
-      );
+      await loadData();
     }
   }
 
@@ -849,14 +831,16 @@ function AdminProducts() {
     if (!window.confirm(`حذف المنتج «${product.name}» نهائياً؟`)) return;
     setError("");
     if (!supabaseConfigured) {
-      setError("لا يمكن حذف المنتجات بشكل مشترك حتى يتم ربط Supabase.");
+      setError("لا يمكن حذف المنتجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
       return;
     }
     const result = await productsTable().delete().eq("id", product.id);
-    if (result.error) setError(result.error.message);
-    else {
+    if (result.error) {
+      if (result.error.message.includes("PRODUCT_HAS_ORDERS")) { await archiveProduct(product); setNotice("هذا المنتج مرتبط بطلب؛ تمت أرشفته بدلاً من حذفه."); }
+      else setError(result.error.message);
+    } else {
       setNotice("تم حذف المنتج.");
-      setProducts((current) => current.filter((item) => item.id !== product.id));
+      await loadData();
       if (editingId === product.id) startCreate();
     }
   }

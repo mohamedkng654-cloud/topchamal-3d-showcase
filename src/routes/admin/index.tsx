@@ -11,9 +11,9 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
-import { getLocalOrders, getLocalProducts } from "@/lib/local-store";
+import { adminHead, subscribeAdminData } from "@/lib/shared-admin";
 
-export const Route = createFileRoute("/admin/")({ component: AdminDashboard });
+export const Route = createFileRoute("/admin/")({ component: AdminDashboard, head: () => adminHead("نظرة عامة", "مؤشرات المبيعات والمخزون المشتركة لمتجر TopChamal.") });
 
 type Metrics = {
   revenue: number;
@@ -42,30 +42,12 @@ function AdminDashboard() {
   const [error, setError] = useState("");
   useEffect(() => {
     void loadMetrics();
+    return subscribeAdminData(["products", "orders", "customers"], () => void loadMetrics());
   }, []);
   async function loadMetrics() {
     setError("");
     if (!supabaseConfigured) {
-      const orders = getLocalOrders() as Array<{
-        total_mad?: number;
-        status?: string;
-        customer_name?: string;
-      }>;
-      const products = getLocalProducts();
-      setMetrics({
-        revenue: orders
-          .filter((order) => order.status !== "cancelled")
-          .reduce((sum, order) => sum + Number(order.total_mad || 0), 0),
-        orders: orders.length,
-        pending: orders.filter((order) =>
-          ["new", "confirmed", "preparing"].includes(order.status || ""),
-        ).length,
-        delivered: orders.filter((order) => order.status === "delivered").length,
-        customers: new Set(orders.map((order) => String(order.customer_name || ""))).size,
-        products: products.length,
-        lowStock: products.filter((product) => product.stock < 5 && product.status === "published")
-          .length,
-      });
+      setError("تعذر الاتصال ببيانات المتجر.");
       setLoading(false);
       return;
     }
@@ -138,7 +120,7 @@ function AdminDashboard() {
             <strong>{loading ? "—" : value}</strong>
             <small>
               <ArrowUpLeft size={12} />{" "}
-              {supabaseConfigured ? "بيانات مباشرة من Supabase" : "بيانات محفوظة في هذا المتصفح"}
+              بيانات المتجر المشتركة
             </small>
           </article>
         ))}

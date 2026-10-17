@@ -1,5 +1,4 @@
 import { supabase, supabaseConfigured } from "./supabase";
-import { CATALOG_EMPTY, getLocalProducts } from "./local-store";
 
 export type StorefrontCategory = {
   id: string;
@@ -37,7 +36,7 @@ const fallbackImage = "/topchamal-logo.jpg";
 export async function loadStorefrontCategories(
   fallback: StorefrontCategory[],
 ): Promise<StorefrontCategory[]> {
-  if (!supabaseConfigured) return fallback;
+   if (!supabaseConfigured) throw new Error("تعذر الاتصال بالمتجر.");
   const { data, error } = await supabase
     .from("categories")
     .select("slug,name,sort_order")
@@ -45,7 +44,7 @@ export async function loadStorefrontCategories(
     .order("sort_order", { ascending: true });
   if (error || !data) {
     console.error("[Storefront] Could not load shared categories", error);
-    return fallback;
+    throw new Error("تعذر تحميل التصنيفات. حاول تحديث الصفحة.");
   }
   return (data as Array<{ slug: string; name: string; sort_order: number }>).map((row) => ({
     id: row.slug,
@@ -75,22 +74,7 @@ function mapProduct(row: CatalogRow): StorefrontProduct {
 export async function loadStorefrontProducts(
   fallback: StorefrontProduct[],
 ): Promise<StorefrontProduct[]> {
-  if (CATALOG_EMPTY) return [];
-  if (!supabaseConfigured) {
-    return getLocalProducts()
-      .filter((row) => row.status === "published")
-      .map((row) => ({
-        id: row.slug,
-        slug: row.slug,
-        name: row.name,
-        category: row.category_id?.replace(/^category-/, "") || "all",
-        price: row.discount_price_mad ?? row.price_mad,
-        oldPrice: row.discount_price_mad == null ? null : row.price_mad,
-        description: row.description || "منتج من تشكيلة Topchamal.",
-        image: row.image_urls?.[0] || fallbackImage,
-        stock: row.stock,
-      }));
-  }
+  if (!supabaseConfigured) throw new Error("تعذر الاتصال بالمتجر.");
   const { data, error } = await supabase
     .from("products")
     .select(
@@ -100,7 +84,7 @@ export async function loadStorefrontProducts(
     .order("created_at", { ascending: false });
   if (error || !data) {
     console.error("[Storefront] Could not load shared catalog", error);
-    return fallback;
+    throw new Error("تعذر تحميل المنتجات. حاول تحديث الصفحة.");
   }
   const local = new Map(fallback.map((p) => [p.id, p]));
   return (data as CatalogRow[]).map((row) => {

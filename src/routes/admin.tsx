@@ -16,10 +16,10 @@ import {
   Tag,
   Users,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getAdminProfile, signOutAdmin } from "@/lib/admin-auth";
-import { getLocalAdmin } from "@/lib/local-admin";
-import { migrateLegacyLocalAdminData } from "@/lib/legacy-sync";
+import { ADMIN_REFRESH_EVENT } from "@/lib/shared-admin";
+
 import { supabase, supabaseConfigured, type AdminProfile } from "@/lib/supabase";
 import "../styles/admin.css";
 
@@ -29,10 +29,6 @@ export const Route = createFileRoute("/admin")({
     const isLoginRoute = location.pathname === "/admin/login";
     const forceLogin =
       isLoginRoute && new URLSearchParams(location.search).get("login") === "1";
-    if (!supabaseConfigured && !getLocalAdmin()) {
-      if (!isLoginRoute) throw redirect({ to: "/admin/login" });
-      return { admin: null };
-    }
     const admin = await getAdminProfile();
     if (!admin && !isLoginRoute) throw redirect({ to: "/admin/login" });
     if (admin && isLoginRoute && !forceLogin) throw redirect({ to: "/admin" });
@@ -57,32 +53,6 @@ function AdminLayout() {
   const [legacySyncError, setLegacySyncError] = useState("");
   const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    if (!admin || !supabaseConfigured) return;
-    let mounted = true;
-    void migrateLegacyLocalAdminData()
-      .then((summary) => {
-        if (!mounted || !summary) return;
-        const total = summary.products + summary.categories + summary.orders + summary.stories;
-        const details = [
-          summary.products ? `${summary.products} منتج` : "",
-          summary.categories ? `${summary.categories} تصنيف` : "",
-          summary.orders ? `${summary.orders} طلب` : "",
-          summary.stories ? `${summary.stories} قصة` : "",
-          summary.siteSettings ? "إعدادات الموقع" : "",
-        ].filter(Boolean);
-        if (total || summary.siteSettings) {
-          setLegacySyncNotice(`تمت مزامنة بيانات هذا الجهاز مع Supabase: ${details.join("، ")}.`);
-        }
-      })
-      .catch((error) => {
-        console.error("[Admin] Legacy local data migration failed", error);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [admin]);
-
   async function logout() {
     await signOutAdmin();
     await router.invalidate();
@@ -95,27 +65,14 @@ function AdminLayout() {
     setLegacySyncError("");
     setLegacySyncNotice("");
     try {
-      const summary = await migrateLegacyLocalAdminData({ force: true });
-      if (!summary) {
-        setLegacySyncError("تعذر الاتصال بـ Supabase. تحقق من الاتصال ثم حاول مرة أخرى.");
-        return;
-      }
-      const total = summary.products + summary.categories + summary.orders + summary.stories;
-      const details = [
-        summary.products ? `${summary.products} منتج` : "",
-        summary.categories ? `${summary.categories} تصنيف` : "",
-        summary.orders ? `${summary.orders} طلب` : "",
-        summary.stories ? `${summary.stories} قصة` : "",
-        summary.siteSettings ? "إعدادات الموقع" : "",
-      ].filter(Boolean);
-      setLegacySyncNotice(
-        total || summary.siteSettings
-          ? `تم نشر التغييرات عالمياً عبر Supabase: ${details.join("، ")}.`
-          : "تمت المزامنة. لم توجد تغييرات محلية جديدة على هذا الجهاز.",
-      );
+      const { error } = await supabase.from("admins").select("user_id").eq("user_id", admin?.user_id || "").single();
+      if (error) throw error;
+      window.dispatchEvent(new Event(ADMIN_REFRESH_EVENT));
+      await router.invalidate();
+      setLegacySyncNotice("تم تحديث البيانات المشتركة من المتجر.");
     } catch (error) {
       setLegacySyncError(
-        `فشلت المزامنة: ${error instanceof Error ? error.message : "تعذر حفظ التغييرات في Supabase."}`,
+        `فشلت المزامنة: ${error instanceof Error ? error.message : "تعذر الاتصال بالمتجر."}`,
       );
     } finally {
       setSyncing(false);
@@ -168,14 +125,12 @@ function AdminLayout() {
               className="admin-sync-button"
               onClick={() => void syncNow()}
               disabled={syncing}
-              title="نشر تغييرات هذا الجهاز لجميع الزوار"
+              title="تحديث البيانات المشتركة"
             >
               <RefreshCw size={15} className={syncing ? "syncing" : ""} />
-              <span>{syncing ? "جارٍ النشر..." : "مزامنة التغييرات"}</span>
+              <span>{syncing ? "جارٍ التحديث..." : "تحديث البيانات"}</span>
             </button>
-            <button aria-label="الإشعارات">
-              <Bell size={18} />
-            </button>
+
           </div>
         </header>
         <main className="admin-content">

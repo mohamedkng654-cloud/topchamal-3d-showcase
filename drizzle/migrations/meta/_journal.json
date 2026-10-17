@@ -57,6 +57,13 @@
       "when": 1792211398346,
       "tag": "0007_private_product_publication_dates",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792212163311,
+      "tag": "0008_shared_story_records",
+      "breakpoints": true
     }
   ]
 }

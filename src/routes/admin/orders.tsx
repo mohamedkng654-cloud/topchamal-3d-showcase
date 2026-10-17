@@ -2,15 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Edit3, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
-import {
-  deleteLocalOrder,
-  getLocalOrders,
-  saveLocalOrders,
-  updateLocalOrder,
-} from "@/lib/local-store";
-import type { LocalOrder } from "@/lib/local-store";
+import { adminHead, subscribeAdminData } from "@/lib/shared-admin";
 
-export const Route = createFileRoute("/admin/orders")({ component: AdminOrders });
+export const Route = createFileRoute("/admin/orders")({ component: AdminOrders, head: () => adminHead("إدارة الطلبات", "متابعة طلبات TopChamal والعملاء والدفع عند الاستلام.") });
 
 type OrderStatus = "new" | "confirmed" | "preparing" | "shipped" | "delivered" | "cancelled";
 type Order = {
@@ -39,21 +33,6 @@ type OrderForm = Pick<
   | "payment_method"
   | "status"
 >;
-function normalizeLocalOrder(raw: LocalOrder, index: number): Order {
-  return {
-    id: String(raw.id || `local-order-${index}`),
-    order_number: String(raw.order_number || raw.orderNumber || `LOCAL-${index + 1}`),
-    customer_name: String(raw.customer_name || raw.name || ""),
-    phone: String(raw.phone || ""),
-    email: raw.email ? String(raw.email) : null,
-    address: raw.address ? String(raw.address) : null,
-    city: raw.city ? String(raw.city) : null,
-    total_mad: Number(raw.total_mad ?? raw.total ?? 0),
-    payment_method: String(raw.payment_method || "cash_on_delivery"),
-    status: (raw.status as OrderStatus) || "new",
-    created_at: String(raw.created_at || raw.createdAt || new Date().toISOString()),
-  };
-}
 const statusLabels: Record<OrderStatus, string> = {
   new: "جديد",
   confirmed: "مؤكد",
@@ -93,11 +72,7 @@ function AdminOrders() {
     setLoading(true);
     setError("");
     if (!supabaseConfigured) {
-      const normalized = (getLocalOrders() as Array<Record<string, unknown>>).map(
-        normalizeLocalOrder,
-      );
-      saveLocalOrders(normalized);
-      setOrders(normalized);
+      setError("تعذر الاتصال بالمتجر. حاول مرة أخرى.");
       setLoading(false);
       return;
     }
@@ -128,6 +103,7 @@ function AdminOrders() {
 
   useEffect(() => {
     void loadOrders();
+    return subscribeAdminData(["orders", "customers"], () => void loadOrders());
   }, []);
 
   const filteredOrders = useMemo(() => {
@@ -179,20 +155,8 @@ function AdminOrders() {
     setSaving(true);
     setError("");
     if (!supabaseConfigured) {
-      updateLocalOrder(editing.id, {
-        ...form,
-        order_number: form.order_number.trim(),
-        customer_name: form.customer_name.trim(),
-        phone: normalizedPhone,
-        email: String(form.email || "").trim() || null,
-        address: String(form.address || "").trim() || null,
-        city: String(form.city || "").trim() || null,
-        total_mad: normalizedTotal,
-      });
       setSaving(false);
-      setNotice(`تم تحديث الطلب ${editing.order_number}.`);
-      closeEdit();
-      await loadOrders();
+      setError("لم يتم حفظ الطلب. تعذر الاتصال بالمتجر.");
       return;
     }
     const result = await supabase
@@ -222,16 +186,14 @@ function AdminOrders() {
     if (!window.confirm(`حذف الطلب ${order.order_number} وجميع تفاصيله؟`)) return;
     setError("");
     if (!supabaseConfigured) {
-      deleteLocalOrder(order.id);
-      setNotice(`تم حذف الطلب ${order.order_number}.`);
-      setOrders((current) => current.filter((item) => item.id !== order.id));
+      setError("لم يتم حذف الطلب. تعذر الاتصال بالمتجر.");
       return;
     }
     const result = await supabase.from("orders").delete().eq("id", order.id);
     if (result.error) setError(result.error.message);
     else {
       setNotice(`تم حذف الطلب ${order.order_number}.`);
-      setOrders((current) => current.filter((item) => item.id !== order.id));
+      await loadOrders();
     }
   }
 

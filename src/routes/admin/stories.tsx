@@ -11,7 +11,9 @@ import {
   updateLocalStory,
 } from "@/lib/local-store";
 
-export const Route = createFileRoute("/admin/stories")({ component: AdminStories });
+import { adminHead, subscribeAdminData } from "@/lib/shared-admin";
+
+export const Route = createFileRoute("/admin/stories")({ component: AdminStories, head: () => adminHead("قصص المتجر", "إدارة قصص وعروض TopChamal المنشورة لجميع الزوار.") });
 
 type StoryForm = {
   media_type: "image" | "video";
@@ -154,7 +156,11 @@ function AdminStories() {
   function refresh() {
     setStories(getLocalStories());
   }
-  useEffect(() => { refresh(); void pullSiteContent().then(refresh); }, []);
+  useEffect(() => {
+    const reload = () => { void pullSiteContent().then(refresh).catch(() => setError("تعذر تحميل القصص المشتركة.")); };
+    reload();
+    return subscribeAdminData(["store_stories"], reload);
+  }, []);
 
   function update<K extends keyof StoryForm>(key: K, value: StoryForm[K]) {
     setForm((current) => ({ ...current, [key]: value }));

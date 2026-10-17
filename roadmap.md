@@ -2,4 +2,7 @@
 - [x] Integrate supplied Topchamal logo and favicon.
 - [x] Polish motion across hero, scroll, cards, buttons, navigation, and interactions without redesign.
 - [x] Verify mobile/desktop interactions.
-- [ ] Static export build verification — not run in this preview turn.
+- [ ] Unify products, categories, orders, settings, stories, and admin preferences in Lovable Cloud.
+- [ ] Remove device-local administration and legacy replay; refresh all views from shared data.
+- [ ] Test authenticated edits and checkout across independent browsers and check preview errors.
+- [ ] Static export build verification — manual builds are not available in this workflow.

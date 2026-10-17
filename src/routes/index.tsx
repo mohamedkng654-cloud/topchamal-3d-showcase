@@ -32,7 +32,7 @@ import {
   type StorefrontCategory,
   type StorefrontProduct,
 } from "@/lib/storefront";
-import { supabaseConfigured } from "@/lib/supabase";
+
 import { defaultSiteSettings, getActiveLocalStories, getLocalSiteSettings, pullSiteContent, subscribeToSiteContent, type LocalStory } from "@/lib/local-store";
 const brandLogo = "/topchamal-logo.jpg";
 
@@ -89,6 +89,8 @@ export function Storefront() {
   const staticCategories = categories.map((category, index) => ({ ...category, sort_order: index }));
   const [categoryList, setCategoryList] = useState<StorefrontCategory[]>(staticCategories);
   const [scrolled, setScrolled] = useState(false);
+  const [catalogError, setCatalogError] = useState("");
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [orderError, setOrderError] = useState("");
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [active, setActive] = useState("all");
@@ -108,8 +110,8 @@ export function Storefront() {
     categoryList.find((category) => category.id === id)?.label || "أجهزة منزلية";
   const productRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    const refreshProducts = () => { void loadStorefrontProducts(fallbackProducts).then(setProducts); };
-    const refreshCategories = () => { void loadStorefrontCategories(staticCategories).then(setCategoryList); };
+    const refreshProducts = () => { void loadStorefrontProducts(fallbackProducts).then((rows) => { setProducts(rows); setCatalogError(""); }).catch((error) => setCatalogError(error.message)).finally(() => setCatalogLoading(false)); };
+    const refreshCategories = () => { void loadStorefrontCategories(staticCategories).then(setCategoryList).catch((error) => setCatalogError(error.message)); };
     refreshProducts();
     refreshCategories();
     try {
@@ -125,12 +127,11 @@ export function Storefront() {
       localStorage.removeItem("topchamal-cart");
     }
     setLoaded(true);
-    setStories(getActiveLocalStories());
-    setSiteSettings(getLocalSiteSettings());
     void pullSiteContent().then(() => {
       setStories(getActiveLocalStories());
       setSiteSettings(getLocalSiteSettings());
-    });
+    }).catch(() => setCatalogError("تعذر تحميل محتوى المتجر."));
+    window.addEventListener("focus", refreshProducts);
     const unsubscribeCatalog = subscribeToStorefrontCatalog(() => {
       refreshProducts();
       refreshCategories();
@@ -142,6 +143,7 @@ export function Storefront() {
     const t = setInterval(() => setNow(Date.now()), 1000);
     setNow(Date.now());
     return () => {
+      window.removeEventListener("focus", refreshProducts);
       clearInterval(t);
       unsubscribeCatalog();
       unsubscribeContent();
@@ -341,62 +343,28 @@ export function Storefront() {
           : "";
       })
       .filter(Boolean);
-    const localOrderNumber = `TC-${Date.now().toString(36).toUpperCase()}`;
-    let orderNumber = localOrderNumber;
-    let orderTotal = total;
-    let backendOrderCreated = false;
+    let orderNumber: string;
+    let orderTotal: number;
     try {
-      const result = await createStorefrontOrder({
-        name,
-        phone,
-        city,
-        lines: cart.map((line) => ({ slug: line.id, quantity: line.quantity })),
-      });
+      const result = await createStorefrontOrder({ name, phone, city, lines: cart.map((line) => ({ slug: line.id, quantity: line.quantity })) });
       orderNumber = result.order_number;
       orderTotal = Number(result.total_mad);
-      backendOrderCreated = true;
-    } catch (submitError) {
-      if (supabaseConfigured) {
-        setOrderError(
-          submitError instanceof Error
-            ? `تعذر حفظ الطلب في النظام: ${submitError.message}`
-            : "تعذر حفظ الطلب في النظام. حاول مرة أخرى.",
-        );
-        setOrderSubmitting(false);
-        return;
-      }
-      // Local fallback is only allowed when the site intentionally has no backend.
-      try {
-        const saved = JSON.parse(localStorage.getItem("topchamal-local-orders") || "[]");
-        const orders = Array.isArray(saved) ? saved : [];
-        orders.push({
-          id: `local-order-${Date.now()}`,
-          order_number: orderNumber,
-          customer_name: name,
-          phone,
-          city,
-          total_mad: orderTotal,
-          payment_method: "cash_on_delivery",
-          status: "new",
-          created_at: new Date().toISOString(),
-          items: lines,
-        });
-        localStorage.setItem("topchamal-local-orders", JSON.stringify(orders.slice(-50)));
-      } catch {
-        // Local storage can be unavailable in private browsing; WhatsApp still works.
-      }
+    } catch {
+      setOrderError("تعذر حفظ الطلب في المتجر. لم يتم إرسال الطلب؛ حاول مرة أخرى.");
+      setOrderSubmitting(false);
+      return;
     }
     const text = `طلب جديد من Topchamal\nرقم الطلب: ${orderNumber}\n\n${lines.join("\n")}\n\nالمجموع: ${formatPrice(orderTotal)} د.م\nالاسم: ${name}\nالهاتف: ${phone}\nالمدينة: ${city}\nطريقة الدفع: عند الاستلام`;
     const popup = window.open(
       `https://wa.me/${siteSettings.whatsapp}?text=${encodeURIComponent(text)}`,
       "_blank",
-      "noopener,noreferrer",
+      "noreferrer",
     );
-    if (!popup) setOrderError("اسمح بفتح النوافذ المنبثقة لإرسال الطلب عبر واتساب.");
-    else {
+    if (!popup) window.location.assign(`https://wa.me/${siteSettings.whatsapp}?text=${encodeURIComponent(text)}`);
+    {
       setCart([]);
       setCheckout(false);
-      if (!backendOrderCreated) setOrderError("تم تجهيز الطلب للتواصل عبر واتساب.");
+
     }
     setOrderSubmitting(false);
   }
@@ -651,6 +619,8 @@ export function Storefront() {
         </section>
       )}
       <section className="section product-section" id="products" ref={productRef}>
+        {catalogError && <p role="alert">{catalogError}</p>}
+        {catalogLoading && <p role="status">جارٍ تحميل المنتجات…</p>}
         <div className="wrap">
           <div className="section-top reveal">
             <div>
@@ -912,7 +882,7 @@ export function Storefront() {
               "?text=" +
               encodeURIComponent("مرحباً، أريد الاستفسار عن منتجات Topchamal"),
             "_blank",
-            "noopener,noreferrer",
+            "noreferrer",
           )
         }
       >

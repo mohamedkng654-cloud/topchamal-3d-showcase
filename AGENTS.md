@@ -11,5 +11,5 @@
 
 - Keep the TanStack preview and separate Vite static export using one storefront component, so the storefront can deploy to ordinary static hosts without a runtime server.
 - Store first-publication timestamps in an admin-readable-only related table and record them via a product-status trigger, so public catalog access never exposes private dates and every publishing path is covered.
-- Keep public product data in JSON and media in local asset pointers, so merchandising does not depend on the original store at runtime.
-- Use WhatsApp's prefilled share flow until a confirmed store phone number is supplied, to avoid sending orders to an invented recipient.
+- Use Lovable Cloud as the only source of administration, catalog, and order data; bundled catalog JSON is not a live database and device-local edits must never be replayed over shared records.
+- Use the configured store WhatsApp direct chat after saving checkout to Cloud, so orders have durable references before handoff.
