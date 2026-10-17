@@ -22,7 +22,7 @@ async def main():
         await page.goto('http://localhost:8080')
         await page.evaluate('([k,v]) => localStorage.setItem(k,v)', [minted['storage_key'], json.dumps(minted['session'])])
         await page.goto('http://localhost:8080/admin/products')
-        await page.get_by_role('heading', name='إدارة المنتجات', exact=False).first.wait_for(timeout=30000) if False else page.wait_for_timeout(2500)
+        await page.wait_for_timeout(3000)
         assert connection.get('base') and connection.get('apikey'), 'Catalog connection unavailable'
         headers = {'apikey': connection['apikey'], 'Authorization': 'Bearer ' + minted['session']['access_token'], 'Prefer': 'return=representation'}
         base = connection['base']
