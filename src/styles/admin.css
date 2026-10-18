@@ -531,9 +531,13 @@
   }
   .admin-brand > div,
   .admin-profile > div,
-  .admin-nav span,
-  .admin-logout {
+  .admin-nav span {
     display: none;
+  }
+  .admin-logout {
+    font-size: 0;
+    justify-content: center;
+    padding: 12px 8px;
   }
   .admin-brand {
     justify-content: center;
