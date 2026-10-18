@@ -1001,7 +1001,7 @@ export function Storefront() {
                 </div>
                 {checkout ? (
                   <>
-                    <Button className="btn btn-wide" type="submit" form="checkout-form">
+                    <Button className="btn btn-wide" type="submit" form="checkout-form" disabled={orderSubmitting}>
                       {orderSubmitting ? (
                         "جار حفظ الطلب..."
                       ) : (

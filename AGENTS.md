@@ -13,3 +13,6 @@
 - Store first-publication timestamps in an admin-readable-only related table and record them via a product-status trigger, so public catalog access never exposes private dates and every publishing path is covered.
 - Use Lovable Cloud as the only source of administration, catalog, and order data; bundled catalog JSON is not a live database and device-local edits must never be replayed over shared records.
 - Use the configured store WhatsApp direct chat after saving checkout to Cloud, so orders have durable references before handoff.
+
+- Store stories as individual Cloud records, not a shared JSON array, so editing one story cannot replace another administrator’s story.
+- Use a shared refresh subscription for admin data and page-focus refetching, so every administration view reads current Cloud records.
