@@ -171,7 +171,7 @@ function AdminOrders() {
         city: String(form.city || "").trim() || null,
         total_mad: normalizedTotal,
       })
-      .eq("id", editing.id);
+      .eq("id", editing.id).select("id").single();
     setSaving(false);
     if (result.error) {
       setError(result.error.message);
@@ -189,7 +189,7 @@ function AdminOrders() {
       setError("لم يتم حذف الطلب. تعذر الاتصال بالمتجر.");
       return;
     }
-    const result = await supabase.from("orders").delete().eq("id", order.id);
+    const result = await supabase.from("orders").delete().eq("id", order.id).select("id").single();
     if (result.error) setError(result.error.message);
     else {
       setNotice(`تم حذف الطلب ${order.order_number}.`);

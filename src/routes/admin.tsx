@@ -99,14 +99,14 @@ function AdminLayout() {
         </div>
         <nav className="admin-nav">
           {navigation.map(({ label, to, icon: Icon }) => (
-            <Link key={to} to={to} activeProps={{ className: "active" }}>
+            <Link key={to} to={to} activeOptions={{ exact: true }} activeProps={{ className: "active" }} title={label}>
               <Icon size={18} />
               <span>{label}</span>
               <ChevronLeft size={14} className="nav-arrow" />
             </Link>
           ))}
         </nav>
-        <button className="admin-logout" onClick={logout}>
+        <button className="admin-logout" onClick={logout} aria-label="تسجيل الخروج" title="تسجيل الخروج">
           <LogOut size={18} /> تسجيل الخروج
         </button>
       </aside>

@@ -153,7 +153,7 @@ export function Storefront() {
     if (loaded) localStorage.setItem("topchamal-cart", JSON.stringify(cart));
   }, [cart, loaded]);
   useEffect(() => {
-    if (!products.length) return;
+    if (catalogLoading || catalogError) return;
     setCart((current) => current
       .map((line) => {
         const product = products.find((item) => item.id === line.id);
@@ -162,7 +162,7 @@ export function Storefront() {
           : null;
       })
       .filter((line): line is CartLine => Boolean(line && line.quantity > 0)));
-  }, [products]);
+  }, [products, catalogLoading, catalogError]);
   useEffect(() => {
     if (storyViewerIndex === null) return;
     document.body.style.overflow = "hidden";
