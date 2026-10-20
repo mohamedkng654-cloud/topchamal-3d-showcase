@@ -40,7 +40,6 @@ const brandLogo = "/topchamal-logo.jpg";
 gsap.registerPlugin(ScrollTrigger);
 type Product = StorefrontProduct;
 type CartLine = { id: string; quantity: number };
-const fallbackProducts = catalog.products as Product[];
 const formatPrice = (n: number) =>
   new Intl.NumberFormat("fr-MA", { maximumFractionDigits: 2 }).format(n);
 const META =
@@ -111,7 +110,7 @@ export function Storefront() {
     categoryList.find((category) => category.id === id)?.label || "أجهزة منزلية";
   const productRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    const refreshProducts = () => { void loadStorefrontProducts(fallbackProducts).then((rows) => { setProducts(rows); setCatalogError(""); }).catch((error) => setCatalogError(error.message)).finally(() => setCatalogLoading(false)); };
+    const refreshProducts = () => { void loadStorefrontProducts([]).then((rows) => { setProducts(rows); setCatalogError(""); }).catch((error) => setCatalogError(error.message)).finally(() => setCatalogLoading(false)); };
     const refreshCategories = () => { void loadStorefrontCategories(staticCategories).then(setCategoryList).catch((error) => setCatalogError(error.message)); };
     refreshProducts();
     refreshCategories();

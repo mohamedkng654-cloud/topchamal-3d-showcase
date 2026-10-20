@@ -15,11 +15,11 @@ bun run dev
 bun run build:static
 ```
 
-Upload the contents of `dist-static/` to any static hosting service. The generated `index.html` includes a readable HTML product catalog for search engines and works with JavaScript disabled. The interactive storefront hydrates in the browser.
+Upload the contents of `dist-static/` to any static hosting service. The generated `index.html` does not embed a build-time product snapshot; the interactive storefront loads the current catalog from the shared database.
 
 ## Edit products
 
-Edit `src/data/products.json`. Each product contains `id`, `name`, `category`, `price`, `oldPrice`, `image`, `description`, and `source`. Product and category photographs from the public Topchamal website have been downloaded into independent CDN-hosted assets tracked in `src/assets/catalog/`; the live storefront does not fetch images from YouCan. Display prices were captured on 29 September 2026 and should be confirmed before taking orders.
+Manage catalog products through `/admin/products`; the Supabase catalog is the only source of truth. `src/data/products.json` no longer contains product records. Product and category photographs are tracked under `src/assets/catalog/`; the live storefront does not fetch images from YouCan.
 
 ## Admin AI assistant
 

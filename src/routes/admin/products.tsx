@@ -891,10 +891,9 @@ function AdminProducts() {
     }
     const result = await productsTable().delete().eq("id", product.id);
     if (result.error) {
-      if (result.error.message.includes("PRODUCT_HAS_ORDERS")) { await archiveProduct(product); setNotice("هذا المنتج مرتبط بطلب؛ تمت أرشفته بدلاً من حذفه."); }
-      else setError(result.error.message);
+      setError(result.error.message);
     } else {
-      setNotice("تم حذف المنتج.");
+      setNotice("تم حذف المنتج نهائياً. سيبقى سجل الطلبات السابق محفوظاً دون ربطه بمنتج الكتالوج.");
       await loadData();
       if (editingId === product.id) startCreate();
     }
