@@ -7,13 +7,12 @@ import { getSupabasePublicConfig } from "@/integrations/supabase/runtime-config"
 const runtimeEnv = typeof process !== "undefined" ? process.env : undefined;
 const publicConfig = getSupabasePublicConfig();
 const supabaseUrl = publicConfig.url || runtimeEnv?.["SUPABASE_URL"];
-const supabaseKey = publicConfig.publishableKey ||
+const supabaseKey =
+  publicConfig.publishableKey ||
   runtimeEnv?.["SUPABASE_PUBLISHABLE_KEY"] ||
   runtimeEnv?.["SUPABASE_ANON_KEY"];
 
-export const supabaseConfigured = Boolean(
-  supabaseUrl && supabaseKey,
-);
+export const supabaseConfigured = Boolean(supabaseUrl && supabaseKey);
 
 export type AdminProfile = {
   user_id: string;

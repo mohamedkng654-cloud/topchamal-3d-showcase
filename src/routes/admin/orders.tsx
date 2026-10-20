@@ -4,7 +4,10 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
 import { adminHead, subscribeAdminData } from "@/lib/shared-admin";
 
-export const Route = createFileRoute("/admin/orders")({ component: AdminOrders, head: () => adminHead("إدارة الطلبات", "متابعة طلبات TopChamal والعملاء والدفع عند الاستلام.") });
+export const Route = createFileRoute("/admin/orders")({
+  component: AdminOrders,
+  head: () => adminHead("إدارة الطلبات", "متابعة طلبات TopChamal والعملاء والدفع عند الاستلام."),
+});
 
 type OrderStatus = "new" | "confirmed" | "preparing" | "shipped" | "delivered" | "cancelled";
 type Order = {
@@ -171,7 +174,9 @@ function AdminOrders() {
         city: String(form.city || "").trim() || null,
         total_mad: normalizedTotal,
       })
-      .eq("id", editing.id).select("id").single();
+      .eq("id", editing.id)
+      .select("id")
+      .single();
     setSaving(false);
     if (result.error) {
       setError(result.error.message);

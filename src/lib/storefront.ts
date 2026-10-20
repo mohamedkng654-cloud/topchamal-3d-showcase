@@ -40,7 +40,7 @@ const fallbackImage = "/topchamal-logo.jpg";
 export async function loadStorefrontCategories(
   fallback: StorefrontCategory[],
 ): Promise<StorefrontCategory[]> {
-   if (!supabaseConfigured) throw new Error("تعذر الاتصال بالمتجر.");
+  if (!supabaseConfigured) throw new Error("تعذر الاتصال بالمتجر.");
   const { data, error } = await supabase
     .from("categories")
     .select("slug,name,sort_order")
@@ -107,7 +107,9 @@ export function subscribeToStorefrontCatalog(onChange: () => void) {
     .on("postgres_changes", { event: "*", schema: "public", table: "products" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, onChange)
     .subscribe();
-  return () => { void supabase.removeChannel(channel); };
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
 
 export type NewOrder = {

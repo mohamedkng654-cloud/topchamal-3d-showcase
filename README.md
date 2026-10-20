@@ -41,7 +41,7 @@ on conflict (user_id) do update set role = 'owner', is_active = true;
 
 ## WhatsApp destination
 
-The public Topchamal site did not provide a phone number. As shipped, checkout opens a pre-filled WhatsApp share dialog so the customer can select the store contact manually; this does not automatically send an order. Once the store's confirmed WhatsApp number is known, change the URL in `src/routes/index.tsx` from `https://api.whatsapp.com/send?text=` to `https://wa.me/212XXXXXXXXX?text=`. Do not publish a fabricated phone number.
+No verified WhatsApp number is configured by default. Checkout opens a pre-filled WhatsApp share dialog so the customer can choose a recipient manually; it does not automatically send the order. Once the owner confirms the store number, add it in `/admin/site`; checkout will then open the direct `wa.me` chat and the floating contact button will appear. Until then, the floating contact button stays hidden. Never publish a fabricated number.
 
 The countdown is a rolling presentation timer, not a verified sale deadline. Confirm promotions and policies with the store before publishing. Footer policy links currently point to source-site paths for verification and may require replacement with local policy pages.
 

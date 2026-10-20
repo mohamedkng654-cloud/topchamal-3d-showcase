@@ -19,9 +19,6 @@ import {
   Play,
   Timer,
 } from "lucide-react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import Lenis from "lenis";
 import { Button } from "@/components/ui/button";
 import catalog from "../data/products.json";
 import { categories } from "../data/categories";
@@ -34,18 +31,28 @@ import {
   type StorefrontProduct,
 } from "@/lib/storefront";
 
-import { defaultSiteSettings, getActiveLocalStories, getLocalSiteSettings, pullSiteContent, subscribeToSiteContent, type LocalStory } from "@/lib/local-store";
+import {
+  defaultSiteSettings,
+  getActiveLocalStories,
+  getLocalSiteSettings,
+  pullSiteContent,
+  subscribeToSiteContent,
+  type LocalStory,
+} from "@/lib/local-store";
 const brandLogo = "/topchamal-logo.jpg";
 
-gsap.registerPlugin(ScrollTrigger);
 type Product = StorefrontProduct;
 type CartLine = { id: string; quantity: number };
 function categoryImageFor(category: string, products: Product[]): string | undefined {
   const mapped = catalog.categoryImages[category as keyof typeof catalog.categoryImages];
   const productImage = products.find((product) => product.category === category)?.image;
-  return [mapped, productImage].find(
-    (image): image is string => Boolean(image && !image.startsWith("/__l5e/") && !image.toLowerCase().startsWith("data:")),
+  return [mapped, productImage].find((image): image is string =>
+    Boolean(image && !image.startsWith("/__l5e/") && !image.toLowerCase().startsWith("data:")),
   );
+}
+function configuredWhatsAppNumber(value: string) {
+  const number = value.replace(/\D/g, "");
+  return /^212[567]\d{8}$/.test(number) ? number : "";
 }
 const formatPrice = (n: number) =>
   new Intl.NumberFormat("fr-MA", { maximumFractionDigits: 2 }).format(n);
@@ -93,6 +100,7 @@ function PictureView({
 }
 export function Storefront() {
   const [siteSettings, setSiteSettings] = useState(defaultSiteSettings);
+  const whatsappNumber = configuredWhatsAppNumber(siteSettings.whatsapp);
   const [products, setProducts] = useState<Product[]>([]);
   const [categoryList, setCategoryList] = useState<StorefrontCategory[]>(staticCategories);
   const [scrolled, setScrolled] = useState(false);
@@ -117,8 +125,20 @@ export function Storefront() {
     categoryList.find((category) => category.id === id)?.label || "أجهزة منزلية";
   const productRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    const refreshProducts = () => { void loadStorefrontProducts([]).then((rows) => { setProducts(rows); setCatalogError(""); }).catch((error) => setCatalogError(error.message)).finally(() => setCatalogLoading(false)); };
-    const refreshCategories = () => { void loadStorefrontCategories(staticCategories).then(setCategoryList).catch((error) => setCatalogError(error.message)); };
+    const refreshProducts = () => {
+      void loadStorefrontProducts([])
+        .then((rows) => {
+          setProducts(rows);
+          setCatalogError("");
+        })
+        .catch((error) => setCatalogError(error.message))
+        .finally(() => setCatalogLoading(false));
+    };
+    const refreshCategories = () => {
+      void loadStorefrontCategories(staticCategories)
+        .then(setCategoryList)
+        .catch((error) => setCatalogError(error.message));
+    };
     refreshProducts();
     refreshCategories();
     try {
@@ -134,10 +154,12 @@ export function Storefront() {
       localStorage.removeItem("topchamal-cart");
     }
     setLoaded(true);
-    void pullSiteContent().then(() => {
-      setStories(getActiveLocalStories());
-      setSiteSettings(getLocalSiteSettings());
-    }).catch(() => setCatalogError("تعذر تحميل محتوى المتجر."));
+    void pullSiteContent()
+      .then(() => {
+        setStories(getActiveLocalStories());
+        setSiteSettings(getLocalSiteSettings());
+      })
+      .catch(() => setCatalogError("تعذر تحميل محتوى المتجر."));
     window.addEventListener("focus", refreshProducts);
     const unsubscribeCatalog = subscribeToStorefrontCatalog(() => {
       refreshProducts();
@@ -161,22 +183,28 @@ export function Storefront() {
   }, [cart, loaded]);
   useEffect(() => {
     if (catalogLoading || catalogError) return;
-    setCart((current) => current
-      .map((line) => {
-        const product = products.find((item) => item.id === line.id);
-        return product && typeof product.stock === "number" && product.stock > 0
-          ? { ...line, quantity: Math.min(line.quantity, product.stock) }
-          : null;
-      })
-      .filter((line): line is CartLine => Boolean(line && line.quantity > 0)));
+    setCart((current) =>
+      current
+        .map((line) => {
+          const product = products.find((item) => item.id === line.id);
+          return product && typeof product.stock === "number" && product.stock > 0
+            ? { ...line, quantity: Math.min(line.quantity, product.stock) }
+            : null;
+        })
+        .filter((line): line is CartLine => Boolean(line && line.quantity > 0)),
+    );
   }, [products, catalogLoading, catalogError]);
   useEffect(() => {
     if (storyViewerIndex === null) return;
     document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setStoryViewerIndex(null);
-      if (event.key === "ArrowLeft") setStoryViewerIndex((index) => (index === null ? null : Math.max(0, index - 1)));
-      if (event.key === "ArrowRight") setStoryViewerIndex((index) => (index === null ? null : index + 1 < stories.length ? index + 1 : 0));
+      if (event.key === "ArrowLeft")
+        setStoryViewerIndex((index) => (index === null ? null : Math.max(0, index - 1)));
+      if (event.key === "ArrowRight")
+        setStoryViewerIndex((index) =>
+          index === null ? null : index + 1 < stories.length ? index + 1 : 0,
+        );
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
@@ -187,7 +215,9 @@ export function Storefront() {
   useEffect(() => {
     if (storyViewerIndex === null || stories.length < 2) return;
     const timer = window.setTimeout(() => {
-      setStoryViewerIndex((index) => (index === null ? null : index + 1 < stories.length ? index + 1 : 0));
+      setStoryViewerIndex((index) =>
+        index === null ? null : index + 1 < stories.length ? index + 1 : 0,
+      );
     }, 6500);
     return () => window.clearTimeout(timer);
   }, [storyViewerIndex, stories.length]);
@@ -220,54 +250,82 @@ export function Storefront() {
   }, [loaded]);
   useEffect(() => {
     if (!loaded || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const lenis = new Lenis({ duration: 1.12 });
-    let id = 0;
-    const raf = (time: number) => {
-      lenis.raf(time);
-      id = requestAnimationFrame(raf);
+    let cancelled = false;
+    let cleanup: (() => void) | undefined;
+    const initializeAnimations = async () => {
+      const [gsapModule, scrollTriggerModule, lenisModule] = await Promise.all([
+        import("gsap"),
+        import("gsap/ScrollTrigger"),
+        import("lenis"),
+      ]);
+      if (cancelled) return;
+
+      const gsap = gsapModule.default;
+      const { ScrollTrigger } = scrollTriggerModule;
+      const Lenis = lenisModule.default;
+      gsap.registerPlugin(ScrollTrigger);
+      const lenis = new Lenis({ duration: 1.12 });
+      let frameId = 0;
+      const raf = (time: number) => {
+        lenis.raf(time);
+        frameId = requestAnimationFrame(raf);
+      };
+      frameId = requestAnimationFrame(raf);
+      lenis.on("scroll", ScrollTrigger.update);
+      const context = gsap.context(() => {
+        gsap.from(".hero-kicker", { opacity: 0, y: 16, duration: 0.7, ease: "power3.out" });
+        gsap.from(".hero h1 .hero-word", {
+          opacity: 0,
+          y: 42,
+          rotateX: 12,
+          stagger: 0.14,
+          duration: 1.05,
+          ease: "power3.out",
+          delay: 0.13,
+        });
+        gsap.from(".hero p", {
+          opacity: 0,
+          y: 22,
+          duration: 0.85,
+          delay: 0.57,
+          ease: "power3.out",
+        });
+        gsap.from(".hero-buttons > *", {
+          opacity: 0,
+          y: 20,
+          stagger: 0.12,
+          duration: 0.75,
+          delay: 0.75,
+          ease: "back.out(1.3)",
+        });
+        gsap.utils
+          .toArray<HTMLElement>(
+            ".reveal, .category-item, .product-card, .trust-item, .faq-list details",
+          )
+          .forEach((el, i) =>
+            gsap.from(el, {
+              opacity: 0,
+              y: 34,
+              scale: 0.975,
+              duration: 0.82,
+              delay: (i % 4) * 0.045,
+              ease: "power2.out",
+              scrollTrigger: { trigger: el, start: "top 94%", once: true },
+            }),
+          );
+      }, document.body);
+      cleanup = () => {
+        cancelAnimationFrame(frameId);
+        lenis.destroy();
+        context.revert();
+      };
     };
-    id = requestAnimationFrame(raf);
-    lenis.on("scroll", ScrollTrigger.update);
-    const ctx = gsap.context(() => {
-      gsap.from(".hero-kicker", { opacity: 0, y: 16, duration: 0.7, ease: "power3.out" });
-      gsap.from(".hero h1 .hero-word", {
-        opacity: 0,
-        y: 42,
-        rotateX: 12,
-        stagger: 0.14,
-        duration: 1.05,
-        ease: "power3.out",
-        delay: 0.13,
-      });
-      gsap.from(".hero p", { opacity: 0, y: 22, duration: 0.85, delay: 0.57, ease: "power3.out" });
-      gsap.from(".hero-buttons > *", {
-        opacity: 0,
-        y: 20,
-        stagger: 0.12,
-        duration: 0.75,
-        delay: 0.75,
-        ease: "back.out(1.3)",
-      });
-      gsap.utils
-        .toArray<HTMLElement>(
-          ".reveal, .category-item, .product-card, .trust-item, .faq-list details",
-        )
-        .forEach((el, i) =>
-          gsap.from(el, {
-            opacity: 0,
-            y: 34,
-            scale: 0.975,
-            duration: 0.82,
-            delay: (i % 4) * 0.045,
-            ease: "power2.out",
-            scrollTrigger: { trigger: el, start: "top 94%", once: true },
-          }),
-        );
-    }, document.body);
+    void initializeAnimations().catch((error: unknown) => {
+      console.warn("[Storefront] Motion effects could not be initialized", error);
+    });
     return () => {
-      cancelAnimationFrame(id);
-      lenis.destroy();
-      ctx.revert();
+      cancelled = true;
+      cleanup?.();
     };
   }, [loaded]);
   const filtered = useMemo(
@@ -317,14 +375,18 @@ export function Storefront() {
   }
   function qty(id: string, d: number) {
     const product = products.find((item) => item.id === id);
-    setCart((c) => c.map((x) => {
-      if (x.id !== id) return x;
-      const next = x.quantity + d;
-      return {
-        ...x,
-        quantity: typeof product?.stock === "number" ? Math.min(next, product.stock) : next,
-      };
-    }).filter((x) => x.quantity > 0));
+    setCart((c) =>
+      c
+        .map((x) => {
+          if (x.id !== id) return x;
+          const next = x.quantity + d;
+          return {
+            ...x,
+            quantity: typeof product?.stock === "number" ? Math.min(next, product.stock) : next,
+          };
+        })
+        .filter((x) => x.quantity > 0),
+    );
   }
   function choose(id: string) {
     setActive(id);
@@ -353,7 +415,12 @@ export function Storefront() {
     let orderNumber: string;
     let orderTotal: number;
     try {
-      const result = await createStorefrontOrder({ name, phone, city, lines: cart.map((line) => ({ slug: line.id, quantity: line.quantity })) });
+      const result = await createStorefrontOrder({
+        name,
+        phone,
+        city,
+        lines: cart.map((line) => ({ slug: line.id, quantity: line.quantity })),
+      });
       orderNumber = result.order_number;
       orderTotal = Number(result.total_mad);
     } catch {
@@ -362,16 +429,14 @@ export function Storefront() {
       return;
     }
     const text = `طلب جديد من Topchamal\nرقم الطلب: ${orderNumber}\n\n${lines.join("\n")}\n\nالمجموع: ${formatPrice(orderTotal)} د.م\nالاسم: ${name}\nالهاتف: ${phone}\nالمدينة: ${city}\nطريقة الدفع: عند الاستلام`;
-    const popup = window.open(
-      `https://wa.me/${siteSettings.whatsapp}?text=${encodeURIComponent(text)}`,
-      "_blank",
-      "noreferrer",
-    );
-    if (!popup) window.location.assign(`https://wa.me/${siteSettings.whatsapp}?text=${encodeURIComponent(text)}`);
+    const shareUrl = whatsappNumber
+      ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    const popup = window.open(shareUrl, "_blank", "noreferrer");
+    if (!popup) window.location.assign(shareUrl);
     {
       setCart([]);
       setCheckout(false);
-
     }
     setOrderSubmitting(false);
   }
@@ -511,31 +576,140 @@ export function Storefront() {
       {stories.length > 0 && (
         <section className="stories-section" aria-label="قصص وعروض Topchamal">
           <div className="wrap">
-            <div className="stories-heading"><div><span className="eyebrow">TOPCHAMAL STORIES</span><h2 className="section-heading">آخر العروض والقصص</h2></div><div className="stories-heading-side"><span className="stories-live-badge"><i /> جديد الآن</span><span className="stories-heading-note">اضغط على أي قصة للتصفح مثل Instagram</span></div></div>
+            <div className="stories-heading">
+              <div>
+                <span className="eyebrow">TOPCHAMAL STORIES</span>
+                <h2 className="section-heading">آخر العروض والقصص</h2>
+              </div>
+              <div className="stories-heading-side">
+                <span className="stories-live-badge">
+                  <i /> جديد الآن
+                </span>
+                <span className="stories-heading-note">اضغط على أي قصة للتصفح مثل Instagram</span>
+              </div>
+            </div>
             <div className="stories-strip">
-              {stories.map((story, index) => <button className="story-card" key={story.id} type="button" onClick={() => setStoryViewerIndex(index)} aria-label={`فتح قصة ${story.title}`}>
-                <span className="story-ring"><span className="story-media">{story.media_type === "video" ? <video src={story.media_url} muted playsInline preload="metadata" /> : <img src={story.media_url} alt="" loading={index === 0 ? "eager" : "lazy"} decoding="async" />}</span></span>
-                <span className="story-card-label">{story.title}</span>
-                {story.media_type === "video" && <span className="story-play"><Play size={14} fill="currentColor" /></span>}
-              </button>)}
+              {stories.map((story, index) => (
+                <button
+                  className="story-card"
+                  key={story.id}
+                  type="button"
+                  onClick={() => setStoryViewerIndex(index)}
+                  aria-label={`فتح قصة ${story.title}`}
+                >
+                  <span className="story-ring">
+                    <span className="story-media">
+                      {story.media_type === "video" ? (
+                        <video src={story.media_url} muted playsInline preload="metadata" />
+                      ) : (
+                        <img
+                          src={story.media_url}
+                          alt=""
+                          loading={index === 0 ? "eager" : "lazy"}
+                          decoding="async"
+                        />
+                      )}
+                    </span>
+                  </span>
+                  <span className="story-card-label">{story.title}</span>
+                  {story.media_type === "video" && (
+                    <span className="story-play">
+                      <Play size={14} fill="currentColor" />
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
           </div>
         </section>
       )}
-      {storyViewerIndex !== null && stories[storyViewerIndex] && (() => {
-        const story = stories[storyViewerIndex];
-        return <div className="story-viewer" role="dialog" aria-modal="true" aria-label="عارض القصص">
-          <button type="button" className="story-viewer-backdrop" onClick={() => setStoryViewerIndex(null)} aria-label="إغلاق القصص" />
-          <div className="story-viewer-shell">
-            <div className="story-progress-row">{stories.map((item, index) => <span className={`story-progress ${index < storyViewerIndex ? "complete" : ""}`} key={item.id}><i className={index === storyViewerIndex ? "running" : ""} /></span>)}</div>
-            <div className="story-viewer-top"><div className="story-viewer-brand"><img src={brandLogo} alt="TopChamal" /><span>TopChamal</span></div><span className="story-counter">{storyViewerIndex + 1} / {stories.length}</span><button type="button" className="story-viewer-close" onClick={() => setStoryViewerIndex(null)} aria-label="إغلاق"><X size={20} /></button></div>
-            <div className="story-viewer-media">{story.media_type === "video" ? <video key={story.id} src={story.media_url} autoPlay muted playsInline /> : <img key={story.id} src={story.media_url} alt={story.title} />}</div>
-            <button type="button" className="story-nav story-nav-prev" onClick={() => setStoryViewerIndex((index) => index === null ? null : Math.max(0, index - 1))} aria-label="القصة السابقة"><ArrowLeft size={24} /></button>
-            <button type="button" className="story-nav story-nav-next" onClick={() => setStoryViewerIndex((index) => index === null ? null : index + 1 < stories.length ? index + 1 : 0)} aria-label="القصة التالية"><ArrowRight size={24} /></button>
-            <div className="story-viewer-info"><span className="story-offer">{story.offer_label || "عرض خاص"}</span><h3>{story.title}</h3>{story.caption && <p>{story.caption}</p>}{story.product_name && <strong>{story.product_name}</strong>}{story.price_mad != null && <div className="story-price"><span>{formatPrice(story.price_mad)} د.م</span>{story.old_price_mad != null && <del>{formatPrice(story.old_price_mad)} د.م</del>}</div>}</div>
-          </div>
-        </div>;
-      })()}
+      {storyViewerIndex !== null &&
+        stories[storyViewerIndex] &&
+        (() => {
+          const story = stories[storyViewerIndex];
+          return (
+            <div className="story-viewer" role="dialog" aria-modal="true" aria-label="عارض القصص">
+              <button
+                type="button"
+                className="story-viewer-backdrop"
+                onClick={() => setStoryViewerIndex(null)}
+                aria-label="إغلاق القصص"
+              />
+              <div className="story-viewer-shell">
+                <div className="story-progress-row">
+                  {stories.map((item, index) => (
+                    <span
+                      className={`story-progress ${index < storyViewerIndex ? "complete" : ""}`}
+                      key={item.id}
+                    >
+                      <i className={index === storyViewerIndex ? "running" : ""} />
+                    </span>
+                  ))}
+                </div>
+                <div className="story-viewer-top">
+                  <div className="story-viewer-brand">
+                    <img src={brandLogo} alt="TopChamal" />
+                    <span>TopChamal</span>
+                  </div>
+                  <span className="story-counter">
+                    {storyViewerIndex + 1} / {stories.length}
+                  </span>
+                  <button
+                    type="button"
+                    className="story-viewer-close"
+                    onClick={() => setStoryViewerIndex(null)}
+                    aria-label="إغلاق"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="story-viewer-media">
+                  {story.media_type === "video" ? (
+                    <video key={story.id} src={story.media_url} autoPlay muted playsInline />
+                  ) : (
+                    <img key={story.id} src={story.media_url} alt={story.title} />
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="story-nav story-nav-prev"
+                  onClick={() =>
+                    setStoryViewerIndex((index) => (index === null ? null : Math.max(0, index - 1)))
+                  }
+                  aria-label="القصة السابقة"
+                >
+                  <ArrowLeft size={24} />
+                </button>
+                <button
+                  type="button"
+                  className="story-nav story-nav-next"
+                  onClick={() =>
+                    setStoryViewerIndex((index) =>
+                      index === null ? null : index + 1 < stories.length ? index + 1 : 0,
+                    )
+                  }
+                  aria-label="القصة التالية"
+                >
+                  <ArrowRight size={24} />
+                </button>
+                <div className="story-viewer-info">
+                  <span className="story-offer">{story.offer_label || "عرض خاص"}</span>
+                  <h3>{story.title}</h3>
+                  {story.caption && <p>{story.caption}</p>}
+                  {story.product_name && <strong>{story.product_name}</strong>}
+                  {story.price_mad != null && (
+                    <div className="story-price">
+                      <span>{formatPrice(story.price_mad)} د.م</span>
+                      {story.old_price_mad != null && (
+                        <del>{formatPrice(story.old_price_mad)} د.م</del>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       <section className="section category-section" id="categories">
         <div className="wrap">
           <div className="section-top reveal">
@@ -689,7 +863,8 @@ export function Storefront() {
                           {Math.max(
                             0,
                             Math.ceil((new Date(p.expiresAt).getTime() - now) / 3600000),
-                          )} ساعة
+                          )}{" "}
+                          ساعة
                         </span>
                       </span>
                     )}
@@ -834,7 +1009,13 @@ export function Storefront() {
           <div className="footer-grid">
             <div>
               <a className="brand" href="/">
-                <img className="footer-logo" src={brandLogo} width="150" height="99" alt="TopChamal Premium Moroccan Cookware" />
+                <img
+                  className="footer-logo"
+                  src={brandLogo}
+                  width="150"
+                  height="99"
+                  alt="TopChamal Premium Moroccan Cookware"
+                />
               </a>
               <p>{siteSettings.footerDescription}</p>
             </div>
@@ -876,37 +1057,65 @@ export function Storefront() {
         </div>
       </footer>
       {previewProduct && (
-        <div className="product-preview" role="dialog" aria-modal="true" aria-label={`معاينة ${previewProduct.name}`}>
-          <button type="button" className="product-preview-backdrop" onClick={() => setPreviewProduct(null)} aria-label="إغلاق المعاينة" />
+        <div
+          className="product-preview"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`معاينة ${previewProduct.name}`}
+        >
+          <button
+            type="button"
+            className="product-preview-backdrop"
+            onClick={() => setPreviewProduct(null)}
+            aria-label="إغلاق المعاينة"
+          />
           <div className="product-preview-card">
-            <Button className="product-preview-close icon-btn" size="icon" onClick={() => setPreviewProduct(null)} aria-label="إغلاق المعاينة"><X size={19} /></Button>
-            <div className="product-preview-image"><img src={previewProduct.image} alt={previewProduct.name} /></div>
+            <Button
+              className="product-preview-close icon-btn"
+              size="icon"
+              onClick={() => setPreviewProduct(null)}
+              aria-label="إغلاق المعاينة"
+            >
+              <X size={19} />
+            </Button>
+            <div className="product-preview-image">
+              <img src={previewProduct.image} alt={previewProduct.name} />
+            </div>
             <div className="product-preview-copy">
               <span className="tag">{categoryName(previewProduct.category)}</span>
               <h2>{previewProduct.name}</h2>
               <p>{previewProduct.description}</p>
-              <strong className="product-preview-price"><span className="num">{formatPrice(previewProduct.price)}</span> <small>د.م</small></strong>
-              <Button className="btn btn-wide product-preview-add" onClick={() => { add(previewProduct); setPreviewProduct(null); }}><Plus size={18} /> أضف مباشرة إلى السلة</Button>
+              <strong className="product-preview-price">
+                <span className="num">{formatPrice(previewProduct.price)}</span> <small>د.م</small>
+              </strong>
+              <Button
+                className="btn btn-wide product-preview-add"
+                onClick={() => {
+                  add(previewProduct);
+                  setPreviewProduct(null);
+                }}
+              >
+                <Plus size={18} /> أضف مباشرة إلى السلة
+              </Button>
             </div>
           </div>
         </div>
       )}
-      <Button
-        className="whatsapp-float"
-        aria-label="التواصل مع TopChamal عبر واتساب"
-        onClick={() =>
-          window.open(
-            "https://wa.me/" +
-              siteSettings.whatsapp +
-              "?text=" +
-              encodeURIComponent("مرحباً، أريد الاستفسار عن منتجات Topchamal"),
-            "_blank",
-            "noreferrer",
-          )
-        }
-      >
-        <MessageCircle size={24} />
-      </Button>
+      {whatsappNumber && (
+        <Button
+          className="whatsapp-float"
+          aria-label="التواصل مع TopChamal عبر واتساب"
+          onClick={() =>
+            window.open(
+              `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("مرحباً، أريد الاستفسار عن منتجات Topchamal")}`,
+              "_blank",
+              "noreferrer",
+            )
+          }
+        >
+          <MessageCircle size={24} />
+        </Button>
+      )}
       {drawer && (
         <>
           <div className="drawer-backdrop" onClick={() => setDrawer(false)} />
@@ -990,7 +1199,11 @@ export function Storefront() {
                         <strong>{p.name}</strong>
                         <span>{formatPrice(p.price * line.quantity)} د.م</span>
                         <div className="qty">
-                          <Button aria-label={`زيادة ${p.name}`} onClick={() => qty(p.id, 1)} disabled={typeof p.stock === "number" && line.quantity >= p.stock}>
+                          <Button
+                            aria-label={`زيادة ${p.name}`}
+                            onClick={() => qty(p.id, 1)}
+                            disabled={typeof p.stock === "number" && line.quantity >= p.stock}
+                          >
                             <Plus size={13} />
                           </Button>
                           <span className="num">{line.quantity}</span>
@@ -1020,7 +1233,12 @@ export function Storefront() {
                 </div>
                 {checkout ? (
                   <>
-                    <Button className="btn btn-wide" type="submit" form="checkout-form" disabled={orderSubmitting}>
+                    <Button
+                      className="btn btn-wide"
+                      type="submit"
+                      form="checkout-form"
+                      disabled={orderSubmitting}
+                    >
                       {orderSubmitting ? (
                         "جار حفظ الطلب..."
                       ) : (

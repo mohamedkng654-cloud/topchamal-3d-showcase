@@ -1,4 +1,11 @@
-import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouter } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  redirect,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import {
   BarChart3,
   Bell,
@@ -27,8 +34,7 @@ export const Route = createFileRoute("/admin")({
   ssr: false,
   beforeLoad: async ({ location }) => {
     const isLoginRoute = location.pathname === "/admin/login";
-    const forceLogin =
-      isLoginRoute && new URLSearchParams(location.search).get("login") === "1";
+    const forceLogin = isLoginRoute && new URLSearchParams(location.search).get("login") === "1";
     const admin = await getAdminProfile();
     if (!admin && !isLoginRoute) throw redirect({ to: "/admin/login" });
     if (admin && isLoginRoute && !forceLogin) throw redirect({ to: "/admin" });
@@ -65,7 +71,11 @@ function AdminLayout() {
     setLegacySyncError("");
     setLegacySyncNotice("");
     try {
-      const { error } = await supabase.from("admins").select("user_id").eq("user_id", admin?.user_id || "").single();
+      const { error } = await supabase
+        .from("admins")
+        .select("user_id")
+        .eq("user_id", admin?.user_id || "")
+        .single();
       if (error) throw error;
       window.dispatchEvent(new Event(ADMIN_REFRESH_EVENT));
       await router.invalidate();
@@ -84,7 +94,13 @@ function AdminLayout() {
     <div className="admin-shell" dir="rtl">
       <aside className="admin-sidebar">
         <div className="admin-brand">
-          <img className="admin-brand-logo" src="/topchamal-logo.jpg" width="58" height="38" alt="TopChamal" />
+          <img
+            className="admin-brand-logo"
+            src="/topchamal-logo.jpg"
+            width="58"
+            height="38"
+            alt="TopChamal"
+          />
           <div>
             <strong>TopChamal</strong>
             <small>لوحة الإدارة</small>
@@ -99,14 +115,25 @@ function AdminLayout() {
         </div>
         <nav className="admin-nav">
           {navigation.map(({ label, to, icon: Icon }) => (
-            <Link key={to} to={to} activeOptions={{ exact: true }} activeProps={{ className: "active" }} title={label}>
+            <Link
+              key={to}
+              to={to}
+              activeOptions={{ exact: true }}
+              activeProps={{ className: "active" }}
+              title={label}
+            >
               <Icon size={18} />
               <span>{label}</span>
               <ChevronLeft size={14} className="nav-arrow" />
             </Link>
           ))}
         </nav>
-        <button className="admin-logout" onClick={logout} aria-label="تسجيل الخروج" title="تسجيل الخروج">
+        <button
+          className="admin-logout"
+          onClick={logout}
+          aria-label="تسجيل الخروج"
+          title="تسجيل الخروج"
+        >
           <LogOut size={18} /> تسجيل الخروج
         </button>
       </aside>
@@ -130,7 +157,6 @@ function AdminLayout() {
               <RefreshCw size={15} className={syncing ? "syncing" : ""} />
               <span>{syncing ? "جارٍ التحديث..." : "تحديث البيانات"}</span>
             </button>
-
           </div>
         </header>
         <main className="admin-content">

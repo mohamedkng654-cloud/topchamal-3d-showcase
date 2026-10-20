@@ -13,7 +13,10 @@ import { useEffect, useState } from "react";
 import { supabase, supabaseConfigured } from "@/lib/supabase";
 import { adminHead, subscribeAdminData } from "@/lib/shared-admin";
 
-export const Route = createFileRoute("/admin/")({ component: AdminDashboard, head: () => adminHead("نظرة عامة", "مؤشرات المبيعات والمخزون المشتركة لمتجر TopChamal.") });
+export const Route = createFileRoute("/admin/")({
+  component: AdminDashboard,
+  head: () => adminHead("نظرة عامة", "مؤشرات المبيعات والمخزون المشتركة لمتجر TopChamal."),
+});
 
 type Metrics = {
   revenue: number;
@@ -52,16 +55,17 @@ function AdminDashboard() {
       return;
     }
     const [ordersResult, customersResult, productsResult, lowStockResult] = await Promise.all([
-        supabase.from("orders").select("total_mad,status"),
-        supabase.from("customers").select("*", { count: "exact", head: true }),
-        supabase.from("products").select("*", { count: "exact", head: true }),
-        supabase
-          .from("products")
-          .select("*", { count: "exact", head: true })
-          .lt("stock", 5)
-          .eq("status", "published"),
-      ]);
-    const firstError = ordersResult.error || customersResult.error || productsResult.error || lowStockResult.error;
+      supabase.from("orders").select("total_mad,status"),
+      supabase.from("customers").select("*", { count: "exact", head: true }),
+      supabase.from("products").select("*", { count: "exact", head: true }),
+      supabase
+        .from("products")
+        .select("*", { count: "exact", head: true })
+        .lt("stock", 5)
+        .eq("status", "published"),
+    ]);
+    const firstError =
+      ordersResult.error || customersResult.error || productsResult.error || lowStockResult.error;
     if (firstError) setError(`تعذر تحميل بعض مؤشرات لوحة التحكم: ${firstError.message}`);
     const orderRows = ordersResult.data || [];
     setMetrics({
@@ -109,7 +113,11 @@ function AdminDashboard() {
           تحديث البيانات <ArrowUpLeft size={16} />
         </button>
       </div>
-      {error && <div className="admin-alert error" role="alert">{error}</div>}
+      {error && (
+        <div className="admin-alert error" role="alert">
+          {error}
+        </div>
+      )}
       <div className="metric-grid">
         {cards.map(({ label, value, icon: Icon, tone }) => (
           <article className={`metric-card ${tone}`} key={label}>
@@ -119,8 +127,7 @@ function AdminDashboard() {
             <span>{label}</span>
             <strong>{loading ? "—" : value}</strong>
             <small>
-              <ArrowUpLeft size={12} />{" "}
-              بيانات المتجر المشتركة
+              <ArrowUpLeft size={12} /> بيانات المتجر المشتركة
             </small>
           </article>
         ))}

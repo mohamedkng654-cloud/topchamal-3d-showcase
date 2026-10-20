@@ -22,14 +22,19 @@ import { generateProductMetadata, scanProductImage } from "@/lib/admin-ai.functi
 
 export const Route = createFileRoute("/admin/products")({
   component: AdminProducts,
-  head: () => ({ meta: [
-    { title: "TopChamal | إدارة المنتجات" },
-    { name: "description", content: "إدارة منتجات TopChamal وتواريخ نشرها الخاصة بالمدير." },
-    { property: "og:title", content: "TopChamal | إدارة المنتجات" },
-    { property: "og:description", content: "إدارة منتجات TopChamal وتواريخ نشرها الخاصة بالمدير." },
-    { property: "og:type", content: "website" },
-    { name: "twitter:card", content: "summary" },
-  ] }),
+  head: () => ({
+    meta: [
+      { title: "TopChamal | إدارة المنتجات" },
+      { name: "description", content: "إدارة منتجات TopChamal وتواريخ نشرها الخاصة بالمدير." },
+      { property: "og:title", content: "TopChamal | إدارة المنتجات" },
+      {
+        property: "og:description",
+        content: "إدارة منتجات TopChamal وتواريخ نشرها الخاصة بالمدير.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
 });
 
 type ProductStatus = "draft" | "published" | "archived";
@@ -281,16 +286,24 @@ function AdminProducts() {
     const dates: Record<string, string> = {};
     let dateError: string | null = null;
     for (let offset = 0; ; offset += pageSize) {
-      const result = await supabase.from("product_publication_dates")
-        .select("product_id,published_at").order("product_id").range(offset, offset + pageSize - 1);
-      if (result.error) { dateError = result.error.message; break; }
+      const result = await supabase
+        .from("product_publication_dates")
+        .select("product_id,published_at")
+        .order("product_id")
+        .range(offset, offset + pageSize - 1);
+      if (result.error) {
+        dateError = result.error.message;
+        break;
+      }
       for (const row of result.data || []) dates[row.product_id] = row.published_at;
       if (!result.data || result.data.length < pageSize) break;
     }
     setPublicationDates(dates);
     const categoryResult = await categoryPromise;
     if (productError || categoryResult.error || dateError) {
-      setError(productError || categoryResult.error?.message || dateError || "تعذر تحميل بيانات الكتالوج.");
+      setError(
+        productError || categoryResult.error?.message || dateError || "تعذر تحميل بيانات الكتالوج.",
+      );
     }
     setProducts(allProducts);
     setCategories((categoryResult.data as Category[]) || []);
@@ -299,7 +312,11 @@ function AdminProducts() {
 
   useEffect(() => {
     void loadData();
-    void readSharedContent<AISettings>("admin_ai_settings").then((value) => { if (value) setAiSettings(value); }).catch(() => setError("تعذر تحميل إعدادات التوليد."));
+    void readSharedContent<AISettings>("admin_ai_settings")
+      .then((value) => {
+        if (value) setAiSettings(value);
+      })
+      .catch(() => setError("تعذر تحميل إعدادات التوليد."));
     return subscribeAdminData(["products", "categories"], () => void loadData());
   }, []);
 
@@ -372,11 +389,18 @@ function AdminProducts() {
         setForm((current) => ({ ...current, image_url }));
         try {
           const suggestion = await scanProductImage({
-            data: { imageDataUrl: image_url, categories: categories.map(({ slug, name }) => ({ slug, name })) },
+            data: {
+              imageDataUrl: image_url,
+              categories: categories.map(({ slug, name }) => ({ slug, name })),
+            },
           });
           setForm((current) => {
-            const category = categories.find((item) => item.slug === suggestion.category_slug || item.name === suggestion.category_slug);
-            const numeric = (value: string) => (/^\d+(?:[.,]\d+)?$/.test(value.trim()) ? value.trim().replace(",", ".") : "");
+            const category = categories.find(
+              (item) =>
+                item.slug === suggestion.category_slug || item.name === suggestion.category_slug,
+            );
+            const numeric = (value: string) =>
+              /^\d+(?:[.,]\d+)?$/.test(value.trim()) ? value.trim().replace(",", ".") : "";
             return {
               ...current,
               name: current.name || suggestion.name,
@@ -386,13 +410,24 @@ function AdminProducts() {
               category_id: current.category_id || category?.id || "",
               description: current.description || suggestion.description,
               tags: current.tags || suggestion.tags.join(", "),
-              price_mad: current.price_mad || numeric(suggestion.original_price_mad) || numeric(suggestion.current_price_mad),
-              discount_price_mad: current.discount_price_mad || (numeric(suggestion.original_price_mad) && numeric(suggestion.current_price_mad) ? numeric(suggestion.current_price_mad) : ""),
+              price_mad:
+                current.price_mad ||
+                numeric(suggestion.original_price_mad) ||
+                numeric(suggestion.current_price_mad),
+              discount_price_mad:
+                current.discount_price_mad ||
+                (numeric(suggestion.original_price_mad) && numeric(suggestion.current_price_mad)
+                  ? numeric(suggestion.current_price_mad)
+                  : ""),
             };
           });
-          setNotice("حلّل الذكاء الاصطناعي الصورة وملأ المعلومات الظاهرة. راجعها وأكمل الحقول الناقصة قبل الحفظ.");
+          setNotice(
+            "حلّل الذكاء الاصطناعي الصورة وملأ المعلومات الظاهرة. راجعها وأكمل الحقول الناقصة قبل الحفظ.",
+          );
         } catch (scanError) {
-          setNotice("تم رفع الصورة. لم يكتمل التحليل الآلي؛ يمكنك تعبئة الحقول يدوياً أو إعادة المحاولة.");
+          setNotice(
+            "تم رفع الصورة. لم يكتمل التحليل الآلي؛ يمكنك تعبئة الحقول يدوياً أو إعادة المحاولة.",
+          );
           setError(scanError instanceof Error ? scanError.message : "تعذر تحليل الصورة.");
         } finally {
           setImageScanLoading(false);
@@ -428,10 +463,16 @@ function AdminProducts() {
     setError("");
     try {
       const suggestion = await scanProductImage({
-        data: { imageDataUrl: form.image_url, categories: categories.map(({ slug, name }) => ({ slug, name })) },
+        data: {
+          imageDataUrl: form.image_url,
+          categories: categories.map(({ slug, name }) => ({ slug, name })),
+        },
       });
-      const category = categories.find((item) => item.slug === suggestion.category_slug || item.name === suggestion.category_slug);
-      const numeric = (value: string) => (/^\d+(?:[.,]\d+)?$/.test(value.trim()) ? value.trim().replace(",", ".") : "");
+      const category = categories.find(
+        (item) => item.slug === suggestion.category_slug || item.name === suggestion.category_slug,
+      );
+      const numeric = (value: string) =>
+        /^\d+(?:[.,]\d+)?$/.test(value.trim()) ? value.trim().replace(",", ".") : "";
       setForm((current) => ({
         ...current,
         name: current.name || suggestion.name,
@@ -441,8 +482,15 @@ function AdminProducts() {
         category_id: current.category_id || category?.id || "",
         description: current.description || suggestion.description,
         tags: current.tags || suggestion.tags.join(", "),
-        price_mad: current.price_mad || numeric(suggestion.original_price_mad) || numeric(suggestion.current_price_mad),
-        discount_price_mad: current.discount_price_mad || (numeric(suggestion.original_price_mad) && numeric(suggestion.current_price_mad) ? numeric(suggestion.current_price_mad) : ""),
+        price_mad:
+          current.price_mad ||
+          numeric(suggestion.original_price_mad) ||
+          numeric(suggestion.current_price_mad),
+        discount_price_mad:
+          current.discount_price_mad ||
+          (numeric(suggestion.original_price_mad) && numeric(suggestion.current_price_mad)
+            ? numeric(suggestion.current_price_mad)
+            : ""),
       }));
       setNotice("اكتمل تحليل الصورة. راجع النتائج وعدّلها قبل حفظ المنتج.");
     } catch (scanError) {
@@ -518,15 +566,18 @@ function AdminProducts() {
     }
     setQuickSaving(true);
     const slug = `quick-${crypto.randomUUID()}`;
-    const result = await productsTable().insert({
-      name: "منتج سريع",
-      slug,
-      price_mad: price,
-      image_urls: [quickImage],
-      stock: 1,
-      status: "published",
-      is_quick_listing: true,
-    }).select("*").single();
+    const result = await productsTable()
+      .insert({
+        name: "منتج سريع",
+        slug,
+        price_mad: price,
+        image_urls: [quickImage],
+        stock: 1,
+        status: "published",
+        is_quick_listing: true,
+      })
+      .select("*")
+      .single();
     setQuickSaving(false);
     if (result.error) {
       setError(result.error.message);
@@ -534,16 +585,27 @@ function AdminProducts() {
     }
     setQuickImage("");
     setQuickPrice("");
-    setNotice("تم نشر المنتج السريع لمدة 24 ساعة. يمكنك تحويله إلى منتج دائم وإكمال تفاصيله لاحقاً.");
+    setNotice(
+      "تم نشر المنتج السريع لمدة 24 ساعة. يمكنك تحويله إلى منتج دائم وإكمال تفاصيله لاحقاً.",
+    );
     await loadData();
   }
 
   async function promoteQuickProduct(product: Product) {
-    if (!window.confirm("إضافة هذا المنتج إلى قائمة المنتجات الدائمة؟ يمكنك استكمال الاسم والتفاصيل من زر تعديل لاحقاً.")) return;
-    const result = await productsTable().update({ is_quick_listing: false, expires_at: null }).eq("id", product.id);
+    if (
+      !window.confirm(
+        "إضافة هذا المنتج إلى قائمة المنتجات الدائمة؟ يمكنك استكمال الاسم والتفاصيل من زر تعديل لاحقاً.",
+      )
+    )
+      return;
+    const result = await productsTable()
+      .update({ is_quick_listing: false, expires_at: null })
+      .eq("id", product.id);
     if (result.error) setError(result.error.message);
     else {
-      setNotice("أصبح المنتج دائماً في قائمة المنتجات. يمكنك إكمال الاسم وبقية التفاصيل من زر تعديل.");
+      setNotice(
+        "أصبح المنتج دائماً في قائمة المنتجات. يمكنك إكمال الاسم وبقية التفاصيل من زر تعديل.",
+      );
       await loadData();
     }
   }
@@ -563,7 +625,8 @@ function AdminProducts() {
     if (
       !Number.isFinite(price) ||
       (!form.price_mad ? false : price < 0) ||
-      (discount !== null && (!Number.isFinite(discount) || discount < 0 || !form.price_mad || discount > price))
+      (discount !== null &&
+        (!Number.isFinite(discount) || discount < 0 || !form.price_mad || discount > price))
     ) {
       setError("تحقق من قيم الأسعار: سعر التخفيض يجب أن يكون أقل من أو مساوياً للسعر الأساسي.");
       return;
@@ -580,7 +643,14 @@ function AdminProducts() {
       price_mad: form.price_mad ? price : 0,
       discount_price_mad: discount,
       category_id: form.category_id || null,
-      image_urls: form.image_url.trim() ? [form.image_url.trim(), ...(editingId ? (products.find((item) => item.id === editingId)?.image_urls.slice(1) || []) : [])] : [],
+      image_urls: form.image_url.trim()
+        ? [
+            form.image_url.trim(),
+            ...(editingId
+              ? products.find((item) => item.id === editingId)?.image_urls.slice(1) || []
+              : []),
+          ]
+        : [],
       stock,
       sku: form.sku.trim() || null,
       brand: form.brand.trim() || null,
@@ -661,8 +731,12 @@ function AdminProducts() {
   }
 
   async function saveAISettings() {
-    try { await saveSharedContent("admin_ai_settings", aiSettings); setNotice("تم حفظ إعدادات التوليد لجميع المديرين."); }
-    catch { setError("تعذر حفظ إعدادات التوليد."); }
+    try {
+      await saveSharedContent("admin_ai_settings", aiSettings);
+      setNotice("تم حفظ إعدادات التوليد لجميع المديرين.");
+    } catch {
+      setError("تعذر حفظ إعدادات التوليد.");
+    }
   }
 
   async function assistBulkRow(index: number) {
@@ -1382,23 +1456,48 @@ function AdminProducts() {
         <div className="admin-form-grid">
           <label>
             <span>السعر (د.م) *</span>
-            <input dir="ltr" type="number" min="0" step="0.01" required value={quickPrice} onChange={(event) => setQuickPrice(event.target.value)} />
+            <input
+              dir="ltr"
+              type="number"
+              min="0"
+              step="0.01"
+              required
+              value={quickPrice}
+              onChange={(event) => setQuickPrice(event.target.value)}
+            />
           </label>
           <label className="admin-form-wide">
             <span>صورة المنتج *</span>
-            <input type="file" accept="image/*" required onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (!file) return;
-              if (!file.type.startsWith("image/") || file.size > 4 * 1024 * 1024) {
-                setError("اختر صورة صالحة لا يتجاوز حجمها 4 ميغابايت.");
-                event.target.value = "";
-                return;
-              }
-              void imageToDataUrl(file).then(setQuickImage).catch(() => setError("تعذر تجهيز الصورة."));
-            }} />
-            {quickImage && <img src={quickImage} alt="معاينة المنتج السريع" style={{ maxWidth: 160, maxHeight: 120, objectFit: "contain", marginTop: 8 }} />}
+            <input
+              type="file"
+              accept="image/*"
+              required
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                if (!file.type.startsWith("image/") || file.size > 4 * 1024 * 1024) {
+                  setError("اختر صورة صالحة لا يتجاوز حجمها 4 ميغابايت.");
+                  event.target.value = "";
+                  return;
+                }
+                void imageToDataUrl(file)
+                  .then(setQuickImage)
+                  .catch(() => setError("تعذر تجهيز الصورة."));
+              }}
+            />
+            {quickImage && (
+              <img
+                src={quickImage}
+                alt="معاينة المنتج السريع"
+                style={{ maxWidth: 160, maxHeight: 120, objectFit: "contain", marginTop: 8 }}
+              />
+            )}
           </label>
-          <button type="submit" className="admin-primary-button" disabled={quickSaving || !quickImage}>
+          <button
+            type="submit"
+            className="admin-primary-button"
+            disabled={quickSaving || !quickImage}
+          >
             {quickSaving ? "جار النشر..." : "نشر لمدة 24 ساعة"}
           </button>
         </div>
@@ -1548,12 +1647,24 @@ function AdminProducts() {
               onChange={(event) => readImageFile(event.target.files?.[0])}
             />
             <div className="product-image-ai-actions">
-              <small>{imageScanLoading ? "جار تحليل الصورة وقراءة المعلومات الظاهرة..." : "بعد رفع الصورة، سيملأ AI الاسم والعلامة والوصف والسعر الظاهر والوسوم تلقائياً."}</small>
-              <button type="button" className="admin-secondary-button ai-button" onClick={() => void rescanCurrentImage()} disabled={imageScanLoading || !form.image_url.startsWith("data:image/")}>
+              <small>
+                {imageScanLoading
+                  ? "جار تحليل الصورة وقراءة المعلومات الظاهرة..."
+                  : "بعد رفع الصورة، سيملأ AI الاسم والعلامة والوصف والسعر الظاهر والوسوم تلقائياً."}
+              </small>
+              <button
+                type="button"
+                className="admin-secondary-button ai-button"
+                onClick={() => void rescanCurrentImage()}
+                disabled={imageScanLoading || !form.image_url.startsWith("data:image/")}
+              >
                 <Sparkles size={14} /> {imageScanLoading ? "جار التحليل..." : "إعادة تحليل الصورة"}
               </button>
             </div>
-            <small>راجع كل اقتراح يدوياً؛ السعر والمخزون والمعلومات غير الظاهرة في الصورة تبقى قابلة للتعبئة والتعديل.</small>
+            <small>
+              راجع كل اقتراح يدوياً؛ السعر والمخزون والمعلومات غير الظاهرة في الصورة تبقى قابلة
+              للتعبئة والتعديل.
+            </small>
           </label>
           <label className="admin-form-wide">
             <span>الوصف</span>
@@ -1638,13 +1749,20 @@ function AdminProducts() {
                           }}
                         />
                       ) : null}
-                      <span className="admin-product-thumb-placeholder" hidden={Boolean(product.image_urls?.[0])}>
+                      <span
+                        className="admin-product-thumb-placeholder"
+                        hidden={Boolean(product.image_urls?.[0])}
+                      >
                         <ImagePlus size={19} />
                       </span>
                     </td>
                     <td>
                       <strong>{product.name}</strong>
-                      {product.is_quick_listing && <small className="status-pill published">منتج سريع · ينتهي خلال 24 ساعة</small>}
+                      {product.is_quick_listing && (
+                        <small className="status-pill published">
+                          منتج سريع · ينتهي خلال 24 ساعة
+                        </small>
+                      )}
                       <small>
                         {product.slug}
                         {product.sku ? ` · ${product.sku}` : ""}
@@ -1668,16 +1786,27 @@ function AdminProducts() {
                       {publicationDates[product.id] ? (
                         <time dateTime={publicationDates[product.id]}>
                           {new Date(publicationDates[product.id] ?? "").toLocaleString("ar-MA", {
-                            timeZone: "Africa/Casablanca", year: "numeric", month: "2-digit", day: "2-digit",
-                            hour: "2-digit", minute: "2-digit",
+                            timeZone: "Africa/Casablanca",
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
                           })}
                         </time>
-                      ) : product.status === "draft" ? "لم يُنشر بعد" : "غير مسجل"}
+                      ) : product.status === "draft" ? (
+                        "لم يُنشر بعد"
+                      ) : (
+                        "غير مسجل"
+                      )}
                     </td>
                     <td>
                       <div className="admin-row-actions">
                         {product.is_quick_listing && (
-                          <button className="admin-action edit" onClick={() => void promoteQuickProduct(product)}>
+                          <button
+                            className="admin-action edit"
+                            onClick={() => void promoteQuickProduct(product)}
+                          >
                             <Plus size={14} /> إضافة إلى قائمة المنتجات
                           </button>
                         )}

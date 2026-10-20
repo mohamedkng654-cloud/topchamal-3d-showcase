@@ -25,7 +25,10 @@ export async function getAdminProfile(): Promise<AdminProfile | null> {
 
 export async function signInAdmin(email: string, password: string) {
   if (!supabaseConfigured) {
-    return { data: { user: null, session: null }, error: new Error("تعذر الاتصال بخدمة تسجيل الدخول. حاول مرة أخرى.") };
+    return {
+      data: { user: null, session: null },
+      error: new Error("تعذر الاتصال بخدمة تسجيل الدخول. حاول مرة أخرى."),
+    };
   }
 
   try {

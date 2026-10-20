@@ -5,7 +5,10 @@ import { signInAdmin } from "@/lib/admin-auth";
 import { supabaseConfigured } from "@/lib/supabase";
 import { adminHead } from "@/lib/shared-admin";
 
-export const Route = createFileRoute("/admin/login")({ component: AdminLogin, head: () => adminHead("تسجيل دخول الإدارة", "تسجيل الدخول الآمن لإدارة متجر TopChamal.") });
+export const Route = createFileRoute("/admin/login")({
+  component: AdminLogin,
+  head: () => adminHead("تسجيل دخول الإدارة", "تسجيل الدخول الآمن لإدارة متجر TopChamal."),
+});
 
 function AdminLogin() {
   const navigate = useNavigate();
@@ -29,13 +32,18 @@ function AdminLogin() {
   }
 
   return (
-            <main className="admin-login-page" dir="rtl">
+    <main className="admin-login-page" dir="rtl">
       <div className="login-decoration">
         <span>TOPCHAMAL</span>
       </div>
       <section className="login-card">
         <div className="login-logo">
-          <img src="/topchamal-logo.jpg" width="160" height="106" alt="TopChamal Premium Moroccan Cookware" />
+          <img
+            src="/topchamal-logo.jpg"
+            width="160"
+            height="106"
+            alt="TopChamal Premium Moroccan Cookware"
+          />
         </div>
         <span className="admin-eyebrow">TOPCHAMAL ADMIN</span>
         <h1>مرحباً بعودتك</h1>

@@ -13,7 +13,10 @@ import {
 
 import { adminHead, subscribeAdminData } from "@/lib/shared-admin";
 
-export const Route = createFileRoute("/admin/stories")({ component: AdminStories, head: () => adminHead("قصص المتجر", "إدارة قصص وعروض TopChamal المنشورة لجميع الزوار.") });
+export const Route = createFileRoute("/admin/stories")({
+  component: AdminStories,
+  head: () => adminHead("قصص المتجر", "إدارة قصص وعروض TopChamal المنشورة لجميع الزوار."),
+});
 
 type StoryForm = {
   media_type: "image" | "video";
@@ -64,12 +67,25 @@ async function compressStoryImage(file: File) {
   canvas.height = Math.max(1, Math.round(bitmap.height * scale));
   canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78));
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", 0.78),
+  );
   if (!blob) throw new Error("تعذر ضغط الصورة.");
-  return { dataUrl: await blobToDataUrl(blob), size: blob.size, width: canvas.width, height: canvas.height };
+  return {
+    dataUrl: await blobToDataUrl(blob),
+    size: blob.size,
+    width: canvas.width,
+    height: canvas.height,
+  };
 }
 
-async function renderStoryVideo(file: File, start: number, end: number, scale: number, bitrate: number) {
+async function renderStoryVideo(
+  file: File,
+  start: number,
+  end: number,
+  scale: number,
+  bitrate: number,
+) {
   const sourceUrl = URL.createObjectURL(file);
   const video = document.createElement("video");
   video.src = sourceUrl;
@@ -85,7 +101,9 @@ async function renderStoryVideo(file: File, start: number, end: number, scale: n
   const context = canvas.getContext("2d");
   if (!context) throw new Error("المتصفح لا يدعم تجهيز الفيديو.");
   const stream = canvas.captureStream(24);
-  const sourceStream = (video as HTMLVideoElement & { captureStream?: () => MediaStream }).captureStream?.();
+  const sourceStream = (
+    video as HTMLVideoElement & { captureStream?: () => MediaStream }
+  ).captureStream?.();
   sourceStream?.getAudioTracks().forEach((track: MediaStreamTrack) => stream.addTrack(track));
   const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
     ? "video/webm;codecs=vp9"
@@ -146,7 +164,12 @@ function AdminStories() {
   const [listOpen, setListOpen] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState("");
-  const [mediaInfo, setMediaInfo] = useState<{ size: number; duration?: number; width?: number; height?: number } | null>(null);
+  const [mediaInfo, setMediaInfo] = useState<{
+    size: number;
+    duration?: number;
+    width?: number;
+    height?: number;
+  } | null>(null);
   const [videoStart, setVideoStart] = useState(0);
   const [videoEnd, setVideoEnd] = useState(0);
   const [videoScale, setVideoScale] = useState("0.75");
@@ -157,7 +180,11 @@ function AdminStories() {
     setStories(getLocalStories());
   }
   useEffect(() => {
-    const reload = () => { void pullSiteContent().then(refresh).catch(() => setError("تعذر تحميل القصص المشتركة.")); };
+    const reload = () => {
+      void pullSiteContent()
+        .then(refresh)
+        .catch(() => setError("تعذر تحميل القصص المشتركة."));
+    };
     reload();
     return subscribeAdminData(["store_stories"], reload);
   }, []);
@@ -204,7 +231,12 @@ function AdminStories() {
       const duration = Number.isFinite(video.duration) ? video.duration : 0;
       setSelectedFile(file);
       setMediaPreviewUrl(previewUrl);
-      setMediaInfo({ size: file.size, duration, width: video.videoWidth, height: video.videoHeight });
+      setMediaInfo({
+        size: file.size,
+        duration,
+        width: video.videoWidth,
+        height: video.videoHeight,
+      });
       setVideoStart(0);
       setVideoEnd(duration);
       setForm((current) => ({
@@ -229,10 +261,25 @@ function AdminStories() {
     setNotice("جاري قص الفيديو وضغطه…");
     try {
       const duration = end - start;
-      const initialBitrate = Math.min(1_800_000, Math.max(320_000, (TARGET_STORY_MEDIA_SIZE * 8 * 0.82) / duration));
-      let blob = await renderStoryVideo(selectedFile, start, end, Number(videoScale), initialBitrate);
+      const initialBitrate = Math.min(
+        1_800_000,
+        Math.max(320_000, (TARGET_STORY_MEDIA_SIZE * 8 * 0.82) / duration),
+      );
+      let blob = await renderStoryVideo(
+        selectedFile,
+        start,
+        end,
+        Number(videoScale),
+        initialBitrate,
+      );
       if (blob.size > TARGET_STORY_MEDIA_SIZE) {
-        blob = await renderStoryVideo(selectedFile, start, end, Number(videoScale), initialBitrate * 0.55);
+        blob = await renderStoryVideo(
+          selectedFile,
+          start,
+          end,
+          Number(videoScale),
+          initialBitrate * 0.55,
+        );
       }
       if (blob.size > MAX_STORY_FILE_SIZE) {
         throw new Error("تعذر ضغط الفيديو إلى أقل من 20 ميغابايت. قصّره أكثر أو اختر دقة أقل.");
@@ -240,7 +287,13 @@ function AdminStories() {
       const dataUrl = await blobToDataUrl(blob);
       setForm((current) => ({ ...current, media_type: "video", media_url: dataUrl }));
       setMediaPreviewUrl(dataUrl);
-      setMediaInfo((current) => ({ ...(current || {}), size: blob.size, duration, width: Math.round((current?.width || 0) * Number(videoScale)), height: Math.round((current?.height || 0) * Number(videoScale)) }));
+      setMediaInfo((current) => ({
+        ...(current || {}),
+        size: blob.size,
+        duration,
+        width: Math.round((current?.width || 0) * Number(videoScale)),
+        height: Math.round((current?.height || 0) * Number(videoScale)),
+      }));
       setSelectedFile(null);
       setNotice(`تم تجهيز الفيديو بنجاح (${(blob.size / 1048576).toFixed(1)} ميغابايت).`);
     } catch (processingError) {
@@ -283,23 +336,23 @@ function AdminStories() {
     setNotice("جاري نشر القصة لجميع الزوار…");
     try {
       const saved = await upsertLocalStory({
-      ...(editingId ? { id: editingId } : {}),
-      media_type: form.media_type,
-      media_url: form.media_url,
-      title: form.title.trim() || form.product_name.trim(),
-      caption: form.caption.trim(),
-      product_name: form.product_name.trim(),
-      price_mad: form.price_mad ? Number(form.price_mad) : null,
-      old_price_mad: form.old_price_mad ? Number(form.old_price_mad) : null,
-      offer_label: form.offer_label.trim(),
-      duration: form.duration,
-      is_active: existing?.is_active ?? true,
-      ...(existing?.created_at ? { created_at: existing.created_at } : {}),
-      expires_at:
-        existing?.duration === form.duration && existing.expires_at
-          ? existing.expires_at
-          : expiryFor(form.duration),
-    });
+        ...(editingId ? { id: editingId } : {}),
+        media_type: form.media_type,
+        media_url: form.media_url,
+        title: form.title.trim() || form.product_name.trim(),
+        caption: form.caption.trim(),
+        product_name: form.product_name.trim(),
+        price_mad: form.price_mad ? Number(form.price_mad) : null,
+        old_price_mad: form.old_price_mad ? Number(form.old_price_mad) : null,
+        offer_label: form.offer_label.trim(),
+        duration: form.duration,
+        is_active: existing?.is_active ?? true,
+        ...(existing?.created_at ? { created_at: existing.created_at } : {}),
+        expires_at:
+          existing?.duration === form.duration && existing.expires_at
+            ? existing.expires_at
+            : expiryFor(form.duration),
+      });
       refresh();
       reset();
       setNotice(saved.is_active ? "تم نشر القصة بنجاح لجميع الزوار." : "تم حفظ القصة.");
@@ -353,7 +406,9 @@ function AdminStories() {
         </div>
         <Clock3 size={28} />
       </div>
-      {(notice || error) && <div className={`admin-alert ${error ? "error" : "success"}`}>{error || notice}</div>}
+      {(notice || error) && (
+        <div className={`admin-alert ${error ? "error" : "success"}`}>{error || notice}</div>
+      )}
 
       <form className="dashboard-panel admin-form-panel story-form" onSubmit={save}>
         <div className="panel-heading">
@@ -361,63 +416,292 @@ function AdminStories() {
             <span className="admin-eyebrow">{editingId ? "تعديل القصة" : "قصة جديدة"}</span>
             <h3>{editingId ? "تعديل المحتوى والمدة" : "أضف قصة أو عرضاً"}</h3>
           </div>
-          <div className="panel-heading-actions">{editingId && <button type="button" className="admin-icon-button" onClick={reset}><X size={16} /></button>}<button type="button" className="admin-collapse-button" onClick={() => setFormOpen((open) => !open)} aria-expanded={formOpen}><ChevronDown size={15} className={formOpen ? "" : "is-collapsed"} />{formOpen ? "إخفاء" : "إظهار"}</button></div>
-        </div>
-        {formOpen && <>
-        <div className="story-form-grid">
-          <label className="story-media-picker">
-            <span className="story-media-preview">
-              {mediaPreviewUrl ? (
-                form.media_type === "video" ? <video src={mediaPreviewUrl} muted controls /> : <img src={mediaPreviewUrl} alt="معاينة القصة" />
-              ) : <ImagePlus size={32} />}
-            </span>
-            <strong>{mediaPreviewUrl ? "تغيير الصورة أو الفيديو" : "اختر صورة أو فيديو"}</strong>
-            <small>حتى 20 ميغابايت · JPG, PNG, WEBP, MP4</small>
-            <input type="file" accept="image/*,video/*" onChange={handleFile} />
-          </label>
-          <div className="story-media-editor">
-            <div className="story-editor-heading"><strong>تعديل وتجهيز الوسائط</strong><span>{mediaInfo ? `${(mediaInfo.size / 1048576).toFixed(1)} ميغابايت` : "لم يتم اختيار ملف"}</span></div>
-            {form.media_type === "video" && mediaInfo?.duration ? <>
-              <label><span>بداية الفيديو: {videoStart.toFixed(1)}ث</span><input type="range" min="0" max={Math.max(0, mediaInfo.duration - 0.5)} step="0.1" value={videoStart} onChange={(e) => setVideoStart(Number(e.target.value))} /></label>
-              <label><span>نهاية الفيديو: {videoEnd.toFixed(1)}ث</span><input type="range" min={Math.min(mediaInfo.duration, videoStart + 0.5)} max={mediaInfo.duration} step="0.1" value={videoEnd} onChange={(e) => setVideoEnd(Number(e.target.value))} /></label>
-              <label><span>الدقة</span><select value={videoScale} onChange={(e) => setVideoScale(e.target.value)}><option value="1">الأصلية</option><option value="0.75">متوسطة (75%)</option><option value="0.5">خفيفة (50%)</option></select></label>
-              <button type="button" className="admin-secondary-button" onClick={() => void prepareVideo()} disabled={mediaProcessing || !selectedFile}>{mediaProcessing ? "جاري التجهيز..." : form.media_url ? "إعادة تجهيز الفيديو" : "قص وضغط الفيديو"}</button>
-              <small className="story-editor-help">يتم قص الفيديو وإعادة ضغطه تلقائياً قبل النشر لضمان بقاء الحجم أقل من 20 ميغابايت.</small>
-            </> : mediaInfo ? <small className="story-editor-help">تم ضغط الصورة تلقائياً وتجهيزها للنشر.</small> : <small className="story-editor-help">اختر صورة أو فيديو، ثم عدّل الحجم والمدة هنا قبل النشر.</small>}
+          <div className="panel-heading-actions">
+            {editingId && (
+              <button type="button" className="admin-icon-button" onClick={reset}>
+                <X size={16} />
+              </button>
+            )}
+            <button
+              type="button"
+              className="admin-collapse-button"
+              onClick={() => setFormOpen((open) => !open)}
+              aria-expanded={formOpen}
+            >
+              <ChevronDown size={15} className={formOpen ? "" : "is-collapsed"} />
+              {formOpen ? "إخفاء" : "إظهار"}
+            </button>
           </div>
-          <div className="story-fields">
-            <label><span>العنوان</span><input value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="مثلاً: عرض نهاية الأسبوع" /></label>
-            <label><span>اسم المنتج</span><input value={form.product_name} onChange={(e) => update("product_name", e.target.value)} placeholder="مثلاً: آلة قهوة Nespresso" /></label>
-            <label className="admin-form-wide"><span>الرسالة أو تفاصيل العرض</span><textarea value={form.caption} onChange={(e) => update("caption", e.target.value)} placeholder="اكتب رسالة قصيرة تظهر داخل القصة..." /></label>
-            <div className="story-price-row">
-              <label><span>السعر الحالي (د.م)</span><input type="number" min="0" value={form.price_mad} onChange={(e) => update("price_mad", e.target.value)} /></label>
-              <label><span>السعر قبل التخفيض</span><input type="number" min="0" value={form.old_price_mad} onChange={(e) => update("old_price_mad", e.target.value)} /></label>
-              <label><span>شارة العرض</span><input value={form.offer_label} onChange={(e) => update("offer_label", e.target.value)} placeholder="عرض خاص" /></label>
+        </div>
+        {formOpen && (
+          <>
+            <div className="story-form-grid">
+              <label className="story-media-picker">
+                <span className="story-media-preview">
+                  {mediaPreviewUrl ? (
+                    form.media_type === "video" ? (
+                      <video src={mediaPreviewUrl} muted controls />
+                    ) : (
+                      <img src={mediaPreviewUrl} alt="معاينة القصة" />
+                    )
+                  ) : (
+                    <ImagePlus size={32} />
+                  )}
+                </span>
+                <strong>
+                  {mediaPreviewUrl ? "تغيير الصورة أو الفيديو" : "اختر صورة أو فيديو"}
+                </strong>
+                <small>حتى 20 ميغابايت · JPG, PNG, WEBP, MP4</small>
+                <input type="file" accept="image/*,video/*" onChange={handleFile} />
+              </label>
+              <div className="story-media-editor">
+                <div className="story-editor-heading">
+                  <strong>تعديل وتجهيز الوسائط</strong>
+                  <span>
+                    {mediaInfo
+                      ? `${(mediaInfo.size / 1048576).toFixed(1)} ميغابايت`
+                      : "لم يتم اختيار ملف"}
+                  </span>
+                </div>
+                {form.media_type === "video" && mediaInfo?.duration ? (
+                  <>
+                    <label>
+                      <span>بداية الفيديو: {videoStart.toFixed(1)}ث</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max={Math.max(0, mediaInfo.duration - 0.5)}
+                        step="0.1"
+                        value={videoStart}
+                        onChange={(e) => setVideoStart(Number(e.target.value))}
+                      />
+                    </label>
+                    <label>
+                      <span>نهاية الفيديو: {videoEnd.toFixed(1)}ث</span>
+                      <input
+                        type="range"
+                        min={Math.min(mediaInfo.duration, videoStart + 0.5)}
+                        max={mediaInfo.duration}
+                        step="0.1"
+                        value={videoEnd}
+                        onChange={(e) => setVideoEnd(Number(e.target.value))}
+                      />
+                    </label>
+                    <label>
+                      <span>الدقة</span>
+                      <select value={videoScale} onChange={(e) => setVideoScale(e.target.value)}>
+                        <option value="1">الأصلية</option>
+                        <option value="0.75">متوسطة (75%)</option>
+                        <option value="0.5">خفيفة (50%)</option>
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="admin-secondary-button"
+                      onClick={() => void prepareVideo()}
+                      disabled={mediaProcessing || !selectedFile}
+                    >
+                      {mediaProcessing
+                        ? "جاري التجهيز..."
+                        : form.media_url
+                          ? "إعادة تجهيز الفيديو"
+                          : "قص وضغط الفيديو"}
+                    </button>
+                    <small className="story-editor-help">
+                      يتم قص الفيديو وإعادة ضغطه تلقائياً قبل النشر لضمان بقاء الحجم أقل من 20
+                      ميغابايت.
+                    </small>
+                  </>
+                ) : mediaInfo ? (
+                  <small className="story-editor-help">
+                    تم ضغط الصورة تلقائياً وتجهيزها للنشر.
+                  </small>
+                ) : (
+                  <small className="story-editor-help">
+                    اختر صورة أو فيديو، ثم عدّل الحجم والمدة هنا قبل النشر.
+                  </small>
+                )}
+              </div>
+              <div className="story-fields">
+                <label>
+                  <span>العنوان</span>
+                  <input
+                    value={form.title}
+                    onChange={(e) => update("title", e.target.value)}
+                    placeholder="مثلاً: عرض نهاية الأسبوع"
+                  />
+                </label>
+                <label>
+                  <span>اسم المنتج</span>
+                  <input
+                    value={form.product_name}
+                    onChange={(e) => update("product_name", e.target.value)}
+                    placeholder="مثلاً: آلة قهوة Nespresso"
+                  />
+                </label>
+                <label className="admin-form-wide">
+                  <span>الرسالة أو تفاصيل العرض</span>
+                  <textarea
+                    value={form.caption}
+                    onChange={(e) => update("caption", e.target.value)}
+                    placeholder="اكتب رسالة قصيرة تظهر داخل القصة..."
+                  />
+                </label>
+                <div className="story-price-row">
+                  <label>
+                    <span>السعر الحالي (د.م)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.price_mad}
+                      onChange={(e) => update("price_mad", e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>السعر قبل التخفيض</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.old_price_mad}
+                      onChange={(e) => update("old_price_mad", e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>شارة العرض</span>
+                    <input
+                      value={form.offer_label}
+                      onChange={(e) => update("offer_label", e.target.value)}
+                      placeholder="عرض خاص"
+                    />
+                  </label>
+                </div>
+                <label>
+                  <span>مدة الظهور</span>
+                  <select
+                    value={form.duration}
+                    onChange={(e) => update("duration", e.target.value as StoryDuration)}
+                  >
+                    {Object.entries(durationLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
-            <label><span>مدة الظهور</span><select value={form.duration} onChange={(e) => update("duration", e.target.value as StoryDuration)}>{Object.entries(durationLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          </div>
-        </div>
-        <div className="admin-form-actions">
-          <button className="admin-primary-button" type="submit" disabled={mediaProcessing || saving || !!selectedFile}>{editingId ? <Edit3 size={16} /> : <Play size={16} />}{mediaProcessing ? "جاري تجهيز الوسائط..." : saving ? "جاري النشر..." : editingId ? "حفظ التعديل" : "نشر القصة"}</button>
-          {editingId && <button className="admin-secondary-button" type="button" onClick={reset}>إلغاء</button>}
-        </div>
-        </>}
+            <div className="admin-form-actions">
+              <button
+                className="admin-primary-button"
+                type="submit"
+                disabled={mediaProcessing || saving || !!selectedFile}
+              >
+                {editingId ? <Edit3 size={16} /> : <Play size={16} />}
+                {mediaProcessing
+                  ? "جاري تجهيز الوسائط..."
+                  : saving
+                    ? "جاري النشر..."
+                    : editingId
+                      ? "حفظ التعديل"
+                      : "نشر القصة"}
+              </button>
+              {editingId && (
+                <button className="admin-secondary-button" type="button" onClick={reset}>
+                  إلغاء
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </form>
 
       <div className="dashboard-panel admin-table-panel">
-        <div className="panel-heading"><div><span className="admin-eyebrow">إدارة القصص</span><h3>{stories.length} قصة محفوظة</h3></div><div className="panel-heading-actions"><small className="story-local-note">تُحفظ في Supabase وتظهر لجميع الزوار</small><button type="button" className="admin-collapse-button" onClick={() => setListOpen((open) => !open)} aria-expanded={listOpen}><ChevronDown size={15} className={listOpen ? "" : "is-collapsed"} />{listOpen ? "إخفاء" : "إظهار"}</button></div></div>
-        {listOpen && (!stories.length ? <p className="admin-state">لا توجد قصص بعد. أضف أول قصة أو عرض من النموذج أعلاه.</p> : (
-          <div className="story-list">
-            {stories.map((story) => {
-              const expired = !!story.expires_at && new Date(story.expires_at).getTime() <= Date.now();
-              return <article className={`story-admin-card ${!story.is_active || expired ? "is-muted" : ""}`} key={story.id}>
-                <div className="story-admin-media">{story.media_type === "video" ? <><video src={story.media_url} muted /><Video size={15} /></> : <img src={story.media_url} alt="" />}</div>
-                <div className="story-admin-copy"><div className="story-admin-title"><strong>{story.title}</strong><span className={`story-status ${story.is_active && !expired ? "live" : "paused"}`}>{expired ? "منتهية" : story.is_active ? "نشطة" : "متوقفة"}</span></div><p>{story.caption || story.product_name || "بدون تفاصيل إضافية"}</p><small>{story.offer_label} · {durationLabels[story.duration]}{story.price_mad != null ? ` · ${story.price_mad.toLocaleString("fr-MA")} د.م` : ""}</small></div>
-                <div className="admin-row-actions"><button className="admin-action edit" onClick={() => edit(story)} title="تعديل"><Edit3 size={15} /></button><button className="admin-action stock" onClick={() => toggle(story)} title={story.is_active ? "إيقاف" : "تشغيل"}>{story.is_active ? <Pause size={15} /> : <Play size={15} />}</button><button className="admin-action delete" onClick={() => remove(story)} title="حذف"><Trash2 size={15} /></button></div>
-              </article>;
-            })}
+        <div className="panel-heading">
+          <div>
+            <span className="admin-eyebrow">إدارة القصص</span>
+            <h3>{stories.length} قصة محفوظة</h3>
           </div>
-        ))}
+          <div className="panel-heading-actions">
+            <small className="story-local-note">تُحفظ في Supabase وتظهر لجميع الزوار</small>
+            <button
+              type="button"
+              className="admin-collapse-button"
+              onClick={() => setListOpen((open) => !open)}
+              aria-expanded={listOpen}
+            >
+              <ChevronDown size={15} className={listOpen ? "" : "is-collapsed"} />
+              {listOpen ? "إخفاء" : "إظهار"}
+            </button>
+          </div>
+        </div>
+        {listOpen &&
+          (!stories.length ? (
+            <p className="admin-state">لا توجد قصص بعد. أضف أول قصة أو عرض من النموذج أعلاه.</p>
+          ) : (
+            <div className="story-list">
+              {stories.map((story) => {
+                const expired =
+                  !!story.expires_at && new Date(story.expires_at).getTime() <= Date.now();
+                return (
+                  <article
+                    className={`story-admin-card ${!story.is_active || expired ? "is-muted" : ""}`}
+                    key={story.id}
+                  >
+                    <div className="story-admin-media">
+                      {story.media_type === "video" ? (
+                        <>
+                          <video src={story.media_url} muted />
+                          <Video size={15} />
+                        </>
+                      ) : (
+                        <img src={story.media_url} alt="" />
+                      )}
+                    </div>
+                    <div className="story-admin-copy">
+                      <div className="story-admin-title">
+                        <strong>{story.title}</strong>
+                        <span
+                          className={`story-status ${story.is_active && !expired ? "live" : "paused"}`}
+                        >
+                          {expired ? "منتهية" : story.is_active ? "نشطة" : "متوقفة"}
+                        </span>
+                      </div>
+                      <p>{story.caption || story.product_name || "بدون تفاصيل إضافية"}</p>
+                      <small>
+                        {story.offer_label} · {durationLabels[story.duration]}
+                        {story.price_mad != null
+                          ? ` · ${story.price_mad.toLocaleString("fr-MA")} د.م`
+                          : ""}
+                      </small>
+                    </div>
+                    <div className="admin-row-actions">
+                      <button
+                        className="admin-action edit"
+                        onClick={() => edit(story)}
+                        title="تعديل"
+                      >
+                        <Edit3 size={15} />
+                      </button>
+                      <button
+                        className="admin-action stock"
+                        onClick={() => toggle(story)}
+                        title={story.is_active ? "إيقاف" : "تشغيل"}
+                      >
+                        {story.is_active ? <Pause size={15} /> : <Play size={15} />}
+                      </button>
+                      <button
+                        className="admin-action delete"
+                        onClick={() => remove(story)}
+                        title="حذف"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ))}
       </div>
     </div>
   );

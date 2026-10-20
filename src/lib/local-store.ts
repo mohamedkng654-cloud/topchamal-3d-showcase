@@ -3,23 +3,41 @@ import { supabase, supabaseConfigured } from "@/lib/supabase";
 let sharedSettings: Partial<LocalSiteSettings> = {};
 let sharedStories: LocalStory[] = [];
 export async function readSharedContent<T>(key: string): Promise<T | null> {
-  const { data, error } = await supabase.from("site_content").select("value").eq("key", key).maybeSingle();
+  const { data, error } = await supabase
+    .from("site_content")
+    .select("value")
+    .eq("key", key)
+    .maybeSingle();
   if (error) throw new Error("تعذر تحميل البيانات المشتركة. حاول مرة أخرى.");
-  return data ? data.value as unknown as T : null;
+  return data ? (data.value as unknown as T) : null;
 }
 export async function saveSharedContent(key: string, value: unknown): Promise<void> {
   if (!supabaseConfigured) throw new Error("تعذر الاتصال بالمتجر. لم يتم حفظ التغييرات.");
-  const { error } = await supabase.from("site_content").upsert({ key, value: value as import("@/integrations/supabase/types").Json, updated_at: new Date().toISOString() });
+  const { error } = await supabase.from("site_content").upsert({
+    key,
+    value: value as import("@/integrations/supabase/types").Json,
+    updated_at: new Date().toISOString(),
+  });
   if (error) throw new Error("تعذر حفظ التغييرات لجميع الزوار. حاول مرة أخرى.");
 }
 async function loadSharedStories(): Promise<LocalStory[]> {
-  const { data, error } = await supabase.from("store_stories").select("id,content,is_active,expires_at,created_at").order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("store_stories")
+    .select("id,content,is_active,expires_at,created_at")
+    .order("created_at", { ascending: false });
   if (error) throw new Error("تعذر تحميل القصص.");
-  return (data || []).map((row) => ({ ...(row.content as unknown as LocalStory), id: row.id, is_active: row.is_active, expires_at: row.expires_at, created_at: row.created_at }));
+  return (data || []).map((row) => ({
+    ...(row.content as unknown as LocalStory),
+    id: row.id,
+    is_active: row.is_active,
+    expires_at: row.expires_at,
+    created_at: row.created_at,
+  }));
 }
 export async function pullSiteContent(): Promise<void> {
   const [settings, stories] = await Promise.all([
-    readSharedContent<LocalSiteSettings>("site_settings"), loadSharedStories(),
+    readSharedContent<LocalSiteSettings>("site_settings"),
+    loadSharedStories(),
   ]);
   sharedSettings = settings || {};
   sharedStories = stories || [];
@@ -30,13 +48,19 @@ export function subscribeToSiteContent(onChange: () => void) {
   const channel = supabase
     .channel("topchamal-public-content")
     .on("postgres_changes", { event: "*", schema: "public", table: "site_content" }, () => {
-      void pullSiteContent().then(onChange).catch((error) => console.error("[Site] Shared content refresh failed", error));
+      void pullSiteContent()
+        .then(onChange)
+        .catch((error) => console.error("[Site] Shared content refresh failed", error));
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "store_stories" }, () => {
-      void pullSiteContent().then(onChange).catch((error) => console.error("[Site] Story refresh failed", error));
+      void pullSiteContent()
+        .then(onChange)
+        .catch((error) => console.error("[Site] Story refresh failed", error));
     })
     .subscribe();
-  return () => { void supabase.removeChannel(channel); };
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
 
 export type LocalSiteSettings = {
@@ -79,7 +103,7 @@ export const defaultSiteSettings: LocalSiteSettings = {
   promoTitle: "عروض تستحق الاكتشاف.",
   promoDescription: "تصفح التخفيضات المتوفرة الآن في تشكيلة المتجر.",
   footerDescription: "تفاصيل صغيرة تصنع بيتاً تحب العودة إليه. أجهزة منزلية مختارة لكل يوم.",
-  whatsapp: "212716313000",
+  whatsapp: "",
 };
 
 function id(prefix: string) {
@@ -111,18 +135,34 @@ export async function upsertLocalStory(
     id: story.id || id("story"),
     created_at: story.created_at || new Date().toISOString(),
   };
-  const { error } = await supabase.from("store_stories").upsert({ id: saved.id, content: saved as unknown as import("@/integrations/supabase/types").Json, is_active: saved.is_active, expires_at: saved.expires_at, created_at: saved.created_at });
+  const { error } = await supabase.from("store_stories").upsert({
+    id: saved.id,
+    content: saved as unknown as import("@/integrations/supabase/types").Json,
+    is_active: saved.is_active,
+    expires_at: saved.expires_at,
+    created_at: saved.created_at,
+  });
   if (error) throw new Error("تعذر حفظ القصة لجميع الزوار.");
   await pullSiteContent();
   return saved;
 }
 export async function updateLocalStory(idValue: string, patch: Partial<LocalStory>): Promise<void> {
-  const { error } = await supabase.from("store_stories").update({ ...(patch.is_active !== undefined ? { is_active: patch.is_active } : {}) }).eq("id", idValue).select("id").single();
+  const { error } = await supabase
+    .from("store_stories")
+    .update({ ...(patch.is_active !== undefined ? { is_active: patch.is_active } : {}) })
+    .eq("id", idValue)
+    .select("id")
+    .single();
   if (error) throw new Error("تعذر تحديث القصة.");
   await pullSiteContent();
 }
 export async function deleteLocalStory(idValue: string): Promise<void> {
-  const { error } = await supabase.from("store_stories").delete().eq("id", idValue).select("id").single();
+  const { error } = await supabase
+    .from("store_stories")
+    .delete()
+    .eq("id", idValue)
+    .select("id")
+    .single();
   if (error) throw new Error("تعذر حذف القصة.");
   await pullSiteContent();
 }
