@@ -17,6 +17,8 @@ export type StorefrontProduct = {
   image: string;
   slug?: string;
   stock?: number;
+  isQuickListing?: boolean;
+  expiresAt?: string | null;
 };
 
 type CatalogRow = {
@@ -28,6 +30,8 @@ type CatalogRow = {
   discount_price_mad: number | string | null;
   image_urls: string[] | null;
   stock: number;
+  is_quick_listing: boolean;
+  expires_at: string | null;
   categories: { slug: string } | { slug: string }[] | null;
 };
 
@@ -68,6 +72,8 @@ function mapProduct(row: CatalogRow): StorefrontProduct {
     description: row.description || "منتج من تشكيلة Topchamal.",
     image: row.image_urls?.[0] || fallbackImage,
     stock: row.stock,
+    isQuickListing: row.is_quick_listing,
+    expiresAt: row.expires_at,
   };
 }
 
@@ -78,7 +84,7 @@ export async function loadStorefrontProducts(
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id,name,slug,description,price_mad,discount_price_mad,image_urls,stock,categories(slug)",
+      "id,name,slug,description,price_mad,discount_price_mad,image_urls,stock,is_quick_listing,expires_at,categories(slug)",
     )
     .eq("status", "published")
     .order("created_at", { ascending: false });

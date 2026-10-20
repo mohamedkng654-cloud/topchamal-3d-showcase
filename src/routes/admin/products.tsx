@@ -11,6 +11,7 @@ import {
   Search,
   Sparkles,
   Trash2,
+  Timer,
   X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -49,6 +50,8 @@ type Product = {
   is_featured: boolean;
   tags: string[];
   created_at: string;
+  is_quick_listing: boolean;
+  expires_at: string | null;
 };
 type BulkRow = {
   name: string;
@@ -188,6 +191,9 @@ function AdminProducts() {
   const [bulkText, setBulkText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [imageScanLoading, setImageScanLoading] = useState(false);
+  const [quickImage, setQuickImage] = useState("");
+  const [quickPrice, setQuickPrice] = useState("");
+  const [quickSaving, setQuickSaving] = useState(false);
   const [bulkProgress, setBulkProgress] = useState("");
   const [aiSettings, setAiSettings] = useState<AISettings>(defaultAISettings);
   const [catalogName, setCatalogName] = useState("");
@@ -489,6 +495,55 @@ function AdminProducts() {
     if (result.error) setError(result.error.message);
     else {
       setNotice("تم حذف الكتالوج لجميع الزوار.");
+      await loadData();
+    }
+  }
+
+  async function saveQuickProduct(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+    const price = Number(quickPrice);
+    if (!quickImage) {
+      setError("اختر صورة المنتج أولاً.");
+      return;
+    }
+    if (!quickPrice || !Number.isFinite(price) || price < 0) {
+      setError("أدخل سعراً صالحاً للمنتج.");
+      return;
+    }
+    if (!supabaseConfigured) {
+      setError("لا يمكن حفظ المنتجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
+      return;
+    }
+    setQuickSaving(true);
+    const slug = `quick-${crypto.randomUUID()}`;
+    const result = await productsTable().insert({
+      name: "منتج سريع",
+      slug,
+      price_mad: price,
+      image_urls: [quickImage],
+      stock: 1,
+      status: "published",
+      is_quick_listing: true,
+    }).select("*").single();
+    setQuickSaving(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setQuickImage("");
+    setQuickPrice("");
+    setNotice("تم نشر المنتج السريع لمدة 24 ساعة. يمكنك تحويله إلى منتج دائم وإكمال تفاصيله لاحقاً.");
+    await loadData();
+  }
+
+  async function promoteQuickProduct(product: Product) {
+    if (!window.confirm("إضافة هذا المنتج إلى قائمة المنتجات الدائمة؟ يمكنك استكمال الاسم والتفاصيل من زر تعديل لاحقاً.")) return;
+    const result = await productsTable().update({ is_quick_listing: false, expires_at: null }).eq("id", product.id);
+    if (result.error) setError(result.error.message);
+    else {
+      setNotice("أصبح المنتج دائماً في قائمة المنتجات. يمكنك إكمال الاسم وبقية التفاصيل من زر تعديل.");
       await loadData();
     }
   }
@@ -1316,6 +1371,40 @@ function AdminProducts() {
         )}
       </section>
 
+      <form className="dashboard-panel admin-form-panel" onSubmit={saveQuickProduct}>
+        <div className="panel-heading">
+          <div>
+            <span className="admin-eyebrow">نشر سريع · 24 ساعة</span>
+            <h3>إضافة منتج فوري</h3>
+            <small>ارفع الصورة وأدخل السعر فقط؛ سينشر تلقائياً لمدة 24 ساعة.</small>
+          </div>
+          <Timer size={20} />
+        </div>
+        <div className="admin-form-grid">
+          <label>
+            <span>السعر (د.م) *</span>
+            <input dir="ltr" type="number" min="0" step="0.01" required value={quickPrice} onChange={(event) => setQuickPrice(event.target.value)} />
+          </label>
+          <label className="admin-form-wide">
+            <span>صورة المنتج *</span>
+            <input type="file" accept="image/*" required onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              if (!file.type.startsWith("image/") || file.size > 4 * 1024 * 1024) {
+                setError("اختر صورة صالحة لا يتجاوز حجمها 4 ميغابايت.");
+                event.target.value = "";
+                return;
+              }
+              void imageToDataUrl(file).then(setQuickImage).catch(() => setError("تعذر تجهيز الصورة."));
+            }} />
+            {quickImage && <img src={quickImage} alt="معاينة المنتج السريع" style={{ maxWidth: 160, maxHeight: 120, objectFit: "contain", marginTop: 8 }} />}
+          </label>
+          <button type="submit" className="admin-primary-button" disabled={quickSaving || !quickImage}>
+            {quickSaving ? "جار النشر..." : "نشر لمدة 24 ساعة"}
+          </button>
+        </div>
+      </form>
+
       <form className="dashboard-panel admin-form-panel" onSubmit={saveProduct}>
         <div className="panel-heading">
           <div>
@@ -1556,6 +1645,7 @@ function AdminProducts() {
                     </td>
                     <td>
                       <strong>{product.name}</strong>
+                      {product.is_quick_listing && <small className="status-pill published">منتج سريع · ينتهي خلال 24 ساعة</small>}
                       <small>
                         {product.slug}
                         {product.sku ? ` · ${product.sku}` : ""}
@@ -1587,6 +1677,11 @@ function AdminProducts() {
                     </td>
                     <td>
                       <div className="admin-row-actions">
+                        {product.is_quick_listing && (
+                          <button className="admin-action edit" onClick={() => void promoteQuickProduct(product)}>
+                            <Plus size={14} /> إضافة إلى قائمة المنتجات
+                          </button>
+                        )}
                         <button className="admin-action edit" onClick={() => startEdit(product)}>
                           <Edit3 size={14} /> تعديل
                         </button>

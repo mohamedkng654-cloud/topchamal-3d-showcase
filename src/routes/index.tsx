@@ -674,6 +674,9 @@ export function Storefront() {
                     onPointerLeave={clearHoldTimer}
                     title="اضغط مطولاً لمعاينة المنتج"
                   >
+                    {p.isQuickListing && p.expiresAt && (
+                      <span className="badge">ينتهي خلال {Math.max(0, Math.ceil((new Date(p.expiresAt).getTime() - now) / 3600000))} س</span>
+                    )}
                     {p.oldPrice && (
                       <span className="badge">
                         -{Math.round((1 - p.price / p.oldPrice) * 100)}%

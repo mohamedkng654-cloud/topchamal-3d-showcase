@@ -251,6 +251,8 @@ export type Database = {
           description: string | null
           discount_price_mad: number | null
           id: string
+          is_quick_listing: boolean
+          expires_at: string | null
           image_urls: string[]
           is_featured: boolean
           name: string
@@ -269,6 +271,8 @@ export type Database = {
           description?: string | null
           discount_price_mad?: number | null
           id?: string
+          is_quick_listing?: boolean
+          expires_at?: string | null
           image_urls?: string[]
           is_featured?: boolean
           name: string
@@ -287,6 +291,8 @@ export type Database = {
           description?: string | null
           discount_price_mad?: number | null
           id?: string
+          is_quick_listing?: boolean
+          expires_at?: string | null
           image_urls?: string[]
           is_featured?: boolean
           name?: string
