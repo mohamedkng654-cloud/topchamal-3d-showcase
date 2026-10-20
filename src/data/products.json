@@ -1,13 +1,4 @@
 {
   "products": [],
-  "categoryImages": {
-    "blender": "/__l5e/assets-v1/ca270b94-7269-4666-8db5-1ceba3ba8245/cat-blender.webp",
-    "robot-cuiseur": "/__l5e/assets-v1/10fe1da7-c049-416f-88a5-ff8e97654c90/cat-robot-cuiseur.webp",
-    "cocotte": "/__l5e/assets-v1/4b8c01e4-dcf3-46b8-b147-9ce3741ffec7/cat-cocotte.webp",
-    "aspirateur": "/__l5e/assets-v1/1a101b47-e42d-4a24-91bd-31ec196b39cb/cat-aspirateur.webp",
-    "ventilateur": "/__l5e/assets-v1/97ec08c7-9592-41ec-8a7a-86a691958c4e/cat-ventilateur.webp",
-    "sandwich-makter-panini": "/__l5e/assets-v1/76d7162c-8c23-47ef-be23-8cd2ac6b4dd5/cat-sandwich-makter-panini.webp",
-    "thermos": "/__l5e/assets-v1/f5de4704-399e-4d61-8452-7fa8be7e9efa/cat-thermos.webp",
-    "plaque-de-cuisson": "/__l5e/assets-v1/a846e490-61f8-457a-ac08-202e8431d090/cat-plaque-de-cuisson.webp"
-  }
+  "categoryImages": {}
 }

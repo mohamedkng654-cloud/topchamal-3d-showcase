@@ -12,14 +12,14 @@ bun run dev
 ## Build for any static host
 
 ```bash
-bun run build:static
+npm run build:static
 ```
 
 Upload the contents of `dist-static/` to any static hosting service. The generated `index.html` does not embed a build-time product snapshot; the interactive storefront loads the current catalog from the shared database.
 
 ## Edit products
 
-Manage catalog products through `/admin/products`; the Supabase catalog is the only source of truth. `src/data/products.json` no longer contains product records. Product and category photographs are tracked under `src/assets/catalog/`; the live storefront does not fetch images from YouCan.
+Manage catalog products through `/admin/products`; the Supabase catalog is the only source of truth. `src/data/products.json` contains no product records or platform-only image URLs. Category tiles use live product images when available and a local icon otherwise.
 
 ## Admin AI assistant
 

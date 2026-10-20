@@ -1359,3 +1359,35 @@
     justify-content: center;
   }
 }
+
+@keyframes admin-surface-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .admin-content { animation: admin-surface-enter 420ms cubic-bezier(.2,.7,.2,1) both; }
+  .admin-login-page .login-card { animation: admin-surface-enter 480ms cubic-bezier(.2,.7,.2,1) both; }
+  .admin-shell .admin-alert { animation: admin-surface-enter 240ms ease-out both; }
+  .admin-nav a { transition: background-color 180ms ease, color 180ms ease, transform 180ms ease; }
+  .admin-nav a:hover { transform: translateX(-3px); }
+  .admin-primary-button,
+  .admin-secondary-button,
+  .dashboard-refresh,
+  .admin-action { transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease; }
+  .admin-primary-button:hover:not(:disabled),
+  .admin-secondary-button:hover:not(:disabled),
+  .dashboard-refresh:hover:not(:disabled),
+  .admin-action:hover:not(:disabled) { transform: translateY(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-content,
+  .admin-login-page .login-card,
+  .admin-shell .admin-alert { animation: none; }
+  .admin-nav a,
+  .admin-primary-button,
+  .admin-secondary-button,
+  .dashboard-refresh,
+  .admin-action { transition: none; }
+}

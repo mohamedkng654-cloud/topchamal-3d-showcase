@@ -40,10 +40,18 @@ const brandLogo = "/topchamal-logo.jpg";
 gsap.registerPlugin(ScrollTrigger);
 type Product = StorefrontProduct;
 type CartLine = { id: string; quantity: number };
+function categoryImageFor(category: string, products: Product[]): string | undefined {
+  const mapped = catalog.categoryImages[category as keyof typeof catalog.categoryImages];
+  const productImage = products.find((product) => product.category === category)?.image;
+  return [mapped, productImage].find(
+    (image): image is string => Boolean(image && !image.startsWith("/__l5e/") && !image.toLowerCase().startsWith("data:")),
+  );
+}
 const formatPrice = (n: number) =>
   new Intl.NumberFormat("fr-MA", { maximumFractionDigits: 2 }).format(n);
 const META =
   "اكتشف آلات القهوة، الخلاطات، العجانات وأجهزة المنزل من Topchamal. تشكيلة مختارة بأسعار الدرهم المغربي.";
+const staticCategories = categories.map((category, index) => ({ ...category, sort_order: index }));
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -86,7 +94,6 @@ function PictureView({
 export function Storefront() {
   const [siteSettings, setSiteSettings] = useState(defaultSiteSettings);
   const [products, setProducts] = useState<Product[]>([]);
-  const staticCategories = categories.map((category, index) => ({ ...category, sort_order: index }));
   const [categoryList, setCategoryList] = useState<StorefrontCategory[]>(staticCategories);
   const [scrolled, setScrolled] = useState(false);
   const [catalogError, setCatalogError] = useState("");
@@ -543,36 +550,35 @@ export function Storefront() {
             </p>
           </div>
           <div className="category-grid">
-            {categoryList.map((c, i) => (
-              <button
-                key={c.id}
-                className={`category-item reveal ${active === c.id ? "active" : ""}`}
-                onClick={() => choose(c.id)}
-                aria-label={`عرض ${c.label}`}
-              >
-                <div className="category-image">
-                  {catalog.categoryImages[c.id as keyof typeof catalog.categoryImages] ||
-                  products.find((p) => p.category === c.id)?.image ? (
-                    <img
-                      loading="lazy"
-                      src={
-                        catalog.categoryImages[c.id as keyof typeof catalog.categoryImages] ||
-                        products.find((p) => p.category === c.id)?.image
-                      }
-                      alt={c.label}
-                      onError={(event) => {
-                        if (!event.currentTarget.src.endsWith("/topchamal-logo.jpg"))
-                          event.currentTarget.src = "/topchamal-logo.jpg";
-                      }}
-                    />
-                  ) : (
-                    <span className="category-symbol">✦</span>
-                  )}
-                </div>
-                <strong>{c.label}</strong>
-                <small>{c.fr}</small>
-              </button>
-            ))}
+            {categoryList.map((c) => {
+              const image = categoryImageFor(c.id, products);
+              return (
+                <button
+                  key={c.id}
+                  className={`category-item reveal ${active === c.id ? "active" : ""}`}
+                  onClick={() => choose(c.id)}
+                  aria-label={`عرض ${c.label}`}
+                >
+                  <div className="category-image">
+                    {image ? (
+                      <img
+                        loading="lazy"
+                        src={image}
+                        alt={c.label}
+                        onError={(event) => {
+                          if (!event.currentTarget.src.endsWith("/topchamal-logo.jpg"))
+                            event.currentTarget.src = "/topchamal-logo.jpg";
+                        }}
+                      />
+                    ) : (
+                      <span className="category-symbol">✦</span>
+                    )}
+                  </div>
+                  <strong>{c.label}</strong>
+                  <small>{c.fr}</small>
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>

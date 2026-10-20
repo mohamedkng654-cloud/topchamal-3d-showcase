@@ -145,7 +145,8 @@
 
 /* Final storefront polish: accessible focus, clearer availability, and tactile feedback */
 :focus-visible{outline:2px solid var(--primary);outline-offset:4px}
-.product-card{overflow:hidden;box-shadow:0 12px 30px color-mix(in oklab,var(--background) 22%,transparent)}
+.product-card{overflow:hidden;box-shadow:0 12px 30px color-mix(in oklab,var(--background) 22%,transparent);transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease}
+.product-card:hover{transform:translateY(-4px);box-shadow:0 18px 38px color-mix(in oklab,var(--background) 30%,transparent)}
 .product-card:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in oklab,var(--primary) 22%,transparent),0 18px 35px color-mix(in oklab,var(--background) 24%,transparent)}
 .product-photo{isolation:isolate}
 .product-photo:after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 55%,color-mix(in oklab,var(--primary) 12%,transparent));pointer-events:none;z-index:0}
@@ -209,5 +210,7 @@
   .quick-product-time { top: 8px; inset-inline-start: 8px; gap: 4px; padding: 6px 8px; font-size: 8px; }
 }
 @media(prefers-reduced-motion:reduce) {
+  .product-card{transition:none}
+  .product-card:hover{transform:none}
   .product-card-quick::before { box-shadow: none; }
 }
