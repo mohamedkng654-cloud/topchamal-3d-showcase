@@ -157,3 +157,57 @@
 .drawer{backdrop-filter:blur(18px)}
 .checkout-error{padding:11px 13px;border:1px solid color-mix(in oklab,var(--destructive) 55%,transparent);background:color-mix(in oklab,var(--destructive) 12%,transparent);color:var(--foreground);font-size:12px;line-height:1.7}
 @media(max-width:700px){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.product-info{padding:13px}.product-info h3{font-size:12px;min-height:38px}.product-price{font-size:15px}.add-btn{width:35px;height:35px}.stock-badge{font-size:9px;right:8px;bottom:8px}}
+
+/* Limited-time quick listings get a warm, high-contrast treatment without changing the catalog layout. */
+.product-card-quick {
+  position: relative;
+  border: 1px solid color-mix(in oklab, var(--primary) 72%, var(--border));
+  background: linear-gradient(155deg, color-mix(in oklab, var(--primary) 13%, var(--card)), var(--card) 54%);
+  box-shadow: 0 14px 38px color-mix(in oklab, var(--primary) 15%, transparent), 0 12px 30px color-mix(in oklab, var(--background) 24%, transparent);
+}
+.product-card-quick::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--primary) 45%, var(--accent)), var(--primary), color-mix(in oklab, var(--primary) 45%, var(--accent)));
+  box-shadow: 0 0 18px color-mix(in oklab, var(--primary) 42%, transparent);
+  pointer-events: none;
+}
+.product-card-quick .product-photo {
+  background: radial-gradient(circle at 50% 42%, color-mix(in oklab, var(--accent) 68%, var(--card)), color-mix(in oklab, var(--primary) 18%, var(--card)) 74%);
+}
+.quick-product-time {
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  inset-inline-start: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  padding: 7px 10px;
+  border: 1px solid color-mix(in oklab, var(--primary) 72%, white 12%);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--background) 88%, transparent);
+  color: var(--accent);
+  box-shadow: 0 5px 18px color-mix(in oklab, var(--background) 34%, transparent);
+  backdrop-filter: blur(10px);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+.quick-product-time svg { color: var(--primary); flex: none; }
+.quick-product-time b { color: var(--primary); }
+.product-card-quick .product-info .tag { color: var(--primary); font-weight: 800; }
+.product-card-quick .product-price { color: var(--primary); }
+.product-card-quick .add-btn { box-shadow: 0 5px 16px color-mix(in oklab, var(--primary) 27%, transparent); }
+@media(max-width:700px) {
+  .product-card-quick { border-radius: 12px; }
+  .quick-product-time { top: 8px; inset-inline-start: 8px; gap: 4px; padding: 6px 8px; font-size: 8px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .product-card-quick::before { box-shadow: none; }
+}

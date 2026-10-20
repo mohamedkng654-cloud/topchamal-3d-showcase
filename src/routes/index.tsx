@@ -17,6 +17,7 @@ import {
   MessageCircle,
   Package,
   Play,
+  Timer,
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -654,7 +655,7 @@ export function Storefront() {
             <div className="product-grid">
               {filtered.map((p) => (
                 <article
-                  className="product-card"
+                  className={`product-card${p.isQuickListing ? " product-card-quick" : ""}`}
                   key={p.id}
                   onPointerMove={(e) => {
                     if (e.pointerType === "mouse") {
@@ -675,7 +676,17 @@ export function Storefront() {
                     title="اضغط مطولاً لمعاينة المنتج"
                   >
                     {p.isQuickListing && p.expiresAt && (
-                      <span className="badge">ينتهي خلال {Math.max(0, Math.ceil((new Date(p.expiresAt).getTime() - now) / 3600000))} س</span>
+                      <span className="quick-product-time">
+                        <Timer size={13} aria-hidden="true" />
+                        <span>عرض سريع</span>
+                        <b aria-hidden="true">·</b>
+                        <span>
+                          {Math.max(
+                            0,
+                            Math.ceil((new Date(p.expiresAt).getTime() - now) / 3600000),
+                          )} ساعة
+                        </span>
+                      </span>
                     )}
                     {p.oldPrice && (
                       <span className="badge">
