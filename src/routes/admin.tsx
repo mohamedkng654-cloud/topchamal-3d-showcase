@@ -163,7 +163,7 @@ function AdminLayout() {
         {customizerOpen && (
           <div className="admin-customizer-panel">
             <div className="admin-customizer-header">
-              <strong>إظهار/إخفاء الخيارات</strong>
+              <strong>أزل أو أعد الخيارات</strong>
             </div>
 
             <div className="admin-customizer-list">
@@ -188,14 +188,14 @@ function AdminLayout() {
                 className="admin-secondary-button admin-customizer-action"
                 onClick={() => setNavVisibility({ ...defaultAdminNavVisibility })}
               >
-                عرض الكل
+                أعد الكل
               </button>
               <button
                 type="button"
                 className="admin-secondary-button admin-customizer-action"
                 onClick={() => setNavVisibility(Object.fromEntries(navigation.map(({ to }) => [to, false])))}
               >
-                إخفاء الكل
+                أزل الكل
               </button>
             </div>
           </div>
@@ -203,13 +203,13 @@ function AdminLayout() {
 
         {visibleNavigation.length === 0 ? (
           <div className="admin-menu-empty">
-            <p>تم إخفاء جميع الخيارات مؤقتاً.</p>
+            <p>تمت إزالة كل الخيارات من الشريط مؤقتاً.</p>
             <button
               type="button"
               className="admin-primary-button"
               onClick={() => setNavVisibility({ ...defaultAdminNavVisibility })}
             >
-              إظهار جميع الخيارات
+              أعد جميع الخيارات
             </button>
           </div>
         ) : (
