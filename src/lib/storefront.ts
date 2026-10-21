@@ -39,6 +39,13 @@ type CatalogRow = {
 };
 
 const fallbackImage = "/topchamal-logo.jpg";
+const repairedProductImages: Record<string, string> = {
+  "nespresso-c40-eu2": "/products/nespresso-c40-eu2.webp",
+  "machine-a-cafe-nespresso-citiz-and-milk-occasion":
+    "/products/machine-a-cafe-nespresso-citiz-and-milk-occasion.webp",
+  "machine-expresso-a-capsule-nespresso-pixie-c60-us-ti-ne-au-maroc":
+    "/products/machine-expresso-a-capsule-nespresso-pixie-c60-us-ti-ne-au-maroc.webp",
+};
 const PRODUCT_CACHE_MS = 30_000;
 let productsCache: { data: StorefrontProduct[]; updatedAt: number } | null = null;
 let productsRequest: Promise<StorefrontProduct[]> | null = null;
@@ -75,6 +82,10 @@ export async function loadStorefrontCategories(
 function mapProduct(row: CatalogRow): StorefrontProduct {
   const price = Number(row.discount_price_mad ?? row.price_mad);
   const oldPrice = row.discount_price_mad == null ? null : Number(row.price_mad);
+  const sourceImage = row.image_url || fallbackImage;
+  const image = sourceImage.startsWith("/__l5e/assets-v1/")
+    ? repairedProductImages[row.slug] || fallbackImage
+    : sourceImage;
   return {
     id: row.slug,
     slug: row.slug,
@@ -83,7 +94,7 @@ function mapProduct(row: CatalogRow): StorefrontProduct {
     price,
     oldPrice,
     description: row.description || "منتج من تشكيلة Topchamal.",
-    image: row.image_url || fallbackImage,
+    image,
     hasInlineImage: row.has_inline_image,
     stock: row.stock,
     isQuickListing: row.is_quick_listing,
