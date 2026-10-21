@@ -12,6 +12,8 @@ import {
 } from "@/lib/local-store";
 
 import { adminHead, subscribeAdminData } from "@/lib/shared-admin";
+import { AdminToolVisibilityMenu } from "@/components/admin/AdminToolVisibilityMenu";
+import { useAdminToolPreferences } from "@/lib/admin-tool-preferences";
 
 export const Route = createFileRoute("/admin/stories")({
   component: AdminStories,
@@ -154,7 +156,13 @@ function expiryFor(duration: StoryDuration) {
   return new Date(Date.now() + (duration === "24h" ? 24 : 72) * 60 * 60 * 1000).toISOString();
 }
 
+const storyTools = [
+  { id: "story-form", label: "إنشاء وتعديل القصص" },
+  { id: "story-list", label: "قائمة القصص المحفوظة" },
+] as const;
+
 function AdminStories() {
+  const toolPreferences = useAdminToolPreferences("stories", storyTools);
   const [stories, setStories] = useState<LocalStory[]>([]);
   const [form, setForm] = useState<StoryForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -403,6 +411,15 @@ function AdminStories() {
           <span className="admin-eyebrow">STORIES · عروض سريعة</span>
           <h2>قصص المتجر</h2>
           <p>انشر صوراً أو فيديوهات للمنتجات والعروض، وحدد مدة ظهورها للزوار.</p>
+          <AdminToolVisibilityMenu
+            section="stories"
+            sectionLabel="القصص والعروض"
+            tools={storyTools}
+            hiddenTools={toolPreferences.hiddenTools}
+            onToggle={toolPreferences.toggleTool}
+            onShowAll={toolPreferences.showAllTools}
+            onHideAll={toolPreferences.hideAllTools}
+          />
         </div>
         <Clock3 size={28} />
       </div>
@@ -410,7 +427,11 @@ function AdminStories() {
         <div className={`admin-alert ${error ? "error" : "success"}`}>{error || notice}</div>
       )}
 
-      <form className="dashboard-panel admin-form-panel story-form" onSubmit={save}>
+      <form
+        className="dashboard-panel admin-form-panel story-form"
+        onSubmit={save}
+        hidden={!toolPreferences.isVisible("story-form")}
+      >
         <div className="panel-heading">
           <div>
             <span className="admin-eyebrow">{editingId ? "تعديل القصة" : "قصة جديدة"}</span>
@@ -615,7 +636,10 @@ function AdminStories() {
         )}
       </form>
 
-      <div className="dashboard-panel admin-table-panel">
+      <div
+        className="dashboard-panel admin-table-panel"
+        hidden={!toolPreferences.isVisible("story-list")}
+      >
         <div className="panel-heading">
           <div>
             <span className="admin-eyebrow">إدارة القصص</span>

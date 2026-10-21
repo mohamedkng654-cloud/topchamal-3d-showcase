@@ -10,13 +10,21 @@ import {
 } from "@/lib/local-store";
 
 import { adminHead, subscribeAdminData } from "@/lib/shared-admin";
+import { AdminToolVisibilityMenu } from "@/components/admin/AdminToolVisibilityMenu";
+import { useAdminToolPreferences } from "@/lib/admin-tool-preferences";
 
 export const Route = createFileRoute("/admin/site")({
   component: AdminSiteSettings,
   head: () => adminHead("محتوى الموقع", "إدارة محتوى متجر TopChamal وبيانات التواصل المشتركة."),
 });
 
+const siteTools = [
+  { id: "homepage", label: "محتوى الواجهة الرئيسية" },
+  { id: "sales", label: "العروض والتواصل" },
+] as const;
+
 function AdminSiteSettings() {
+  const toolPreferences = useAdminToolPreferences("site", siteTools);
   const [settings, setSettings] = useState<LocalSiteSettings>(defaultSiteSettings);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -80,13 +88,26 @@ function AdminSiteSettings() {
           <span className="admin-eyebrow">إعدادات الموقع</span>
           <h2>محتوى المتجر</h2>
           <p>عدّل النصوص والمعلومات التي تظهر للزوار في الصفحة الرئيسية.</p>
+          <AdminToolVisibilityMenu
+            section="site"
+            sectionLabel="محتوى الموقع"
+            tools={siteTools}
+            hiddenTools={toolPreferences.hiddenTools}
+            onToggle={toolPreferences.toggleTool}
+            onShowAll={toolPreferences.showAllTools}
+            onHideAll={toolPreferences.hideAllTools}
+          />
         </div>
         <Store size={28} />
       </div>
       {(notice || error) && (
         <div className={`admin-alert ${error ? "error" : "success"}`}>{error || notice}</div>
       )}
-      <fieldset className="dashboard-panel" disabled={loading || saving}>
+      <fieldset
+        className="dashboard-panel"
+        disabled={loading || saving}
+        hidden={!toolPreferences.isVisible("homepage")}
+      >
         <div className="panel-heading">
           <div>
             <span className="admin-eyebrow">الواجهة الرئيسية</span>
@@ -142,7 +163,11 @@ function AdminSiteSettings() {
           </div>
         )}
       </fieldset>
-      <fieldset className="dashboard-panel" disabled={loading || saving}>
+      <fieldset
+        className="dashboard-panel"
+        disabled={loading || saving}
+        hidden={!toolPreferences.isVisible("sales")}
+      >
         <div className="panel-heading">
           <div>
             <span className="admin-eyebrow">محتوى البيع</span>

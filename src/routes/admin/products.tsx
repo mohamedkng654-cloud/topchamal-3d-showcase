@@ -19,6 +19,8 @@ import { supabase, supabaseConfigured } from "@/lib/supabase";
 import { readSharedContent, saveSharedContent } from "@/lib/local-store";
 import { subscribeAdminData } from "@/lib/shared-admin";
 import { generateProductMetadata, scanProductImage } from "@/lib/admin-ai.functions";
+import { AdminToolVisibilityMenu } from "@/components/admin/AdminToolVisibilityMenu";
+import { useAdminToolPreferences } from "@/lib/admin-tool-preferences";
 
 export const Route = createFileRoute("/admin/products")({
   component: AdminProducts,
@@ -113,6 +115,13 @@ const lengthLabels: Record<AISettings["descriptionLength"], string> = {
   long: "مفصل (100-140 كلمة)",
 };
 
+const productTools = [
+  { id: "ai-settings", label: "إعدادات الذكاء الاصطناعي" },
+  { id: "copilot", label: "مساعد إضافة المنتجات" },
+  { id: "catalog", label: "إدارة الكتالوجات" },
+  { id: "bulk", label: "الإضافة الجماعية" },
+] as const;
+
 const emptyBulkRow = (): BulkRow => ({
   name: "",
   price: "",
@@ -179,6 +188,7 @@ function toForm(product: Product): ProductForm {
 }
 
 function AdminProducts() {
+  const toolPreferences = useAdminToolPreferences("products", productTools);
   const [products, setProducts] = useState<Product[]>([]);
   const [publicationDates, setPublicationDates] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<Category[]>([]);
@@ -993,6 +1003,15 @@ function AdminProducts() {
           <span className="admin-eyebrow">المخزون والكتالوج</span>
           <h2>إدارة المنتجات</h2>
           <p>أضف المنتجات وعدّل الأسعار والصور والمخزون وحالة النشر.</p>
+          <AdminToolVisibilityMenu
+            section="products"
+            sectionLabel="المنتجات"
+            tools={productTools}
+            hiddenTools={toolPreferences.hiddenTools}
+            onToggle={toolPreferences.toggleTool}
+            onShowAll={toolPreferences.showAllTools}
+            onHideAll={toolPreferences.hideAllTools}
+          />
         </div>
         <div className="admin-heading-actions">
           <button className="dashboard-refresh" onClick={() => void loadData()} disabled={loading}>
@@ -1008,7 +1027,10 @@ function AdminProducts() {
         <div className={`admin-alert ${error ? "error" : "success"}`}>{error || notice}</div>
       )}
 
-      <section className="dashboard-panel ai-settings-panel">
+      <section
+        className="dashboard-panel ai-settings-panel"
+        hidden={!toolPreferences.isVisible("ai-settings")}
+      >
         <div className="panel-heading">
           <div>
             <span className="admin-eyebrow">إعدادات المساعد</span>
@@ -1094,7 +1116,10 @@ function AdminProducts() {
         )}
       </section>
 
-      <section className="dashboard-panel product-copilot-panel">
+      <section
+        className="dashboard-panel product-copilot-panel"
+        hidden={!toolPreferences.isVisible("copilot")}
+      >
         <div className="panel-heading">
           <div>
             <span className="admin-eyebrow">مساعد الإضافة</span>
@@ -1219,7 +1244,10 @@ function AdminProducts() {
         )}
       </section>
 
-      <section className="dashboard-panel catalog-manager-panel">
+      <section
+        className="dashboard-panel catalog-manager-panel"
+        hidden={!toolPreferences.isVisible("catalog")}
+      >
         <div className="panel-heading">
           <div>
             <span className="admin-eyebrow">التصنيفات والكتالوجات</span>
@@ -1296,7 +1324,10 @@ function AdminProducts() {
         )}
       </section>
 
-      <section className="dashboard-panel bulk-products-panel">
+      <section
+        className="dashboard-panel bulk-products-panel"
+        hidden={!toolPreferences.isVisible("bulk")}
+      >
         <div className="panel-heading">
           <div>
             <span className="admin-eyebrow">إضافة سريعة</span>
