@@ -20,6 +20,7 @@ import {
   Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { StorefrontProductImage } from "@/components/StorefrontProductImage";
 import catalog from "../data/products.json";
 import { categories } from "../data/categories";
 import {
@@ -76,24 +77,26 @@ function PictureView({
   src,
   alt,
   interactive = true,
+  slug,
+  hasInlineImage,
 }: {
   src: string;
   alt: string;
-  interactive?: boolean;
+  interactive?: boolean | undefined;
+  slug?: string | undefined;
+  hasInlineImage?: boolean | undefined;
 }) {
   return (
     <div className={interactive ? "hero-scene picture-scene" : "showcase-visual picture-scene"}>
       <div className="hero-fallback" />
-      <img
+      <StorefrontProductImage
         key={src}
         src={src}
         alt={alt}
         className="scene-picture"
         loading={interactive ? "eager" : "lazy"}
-        onError={(event) => {
-          if (!event.currentTarget.src.endsWith("/topchamal-logo.jpg"))
-            event.currentTarget.src = "/topchamal-logo.jpg";
-        }}
+        slug={slug}
+        hasInlineImage={hasInlineImage}
       />
     </div>
   );
@@ -125,19 +128,33 @@ export function Storefront() {
     categoryList.find((category) => category.id === id)?.label || "أجهزة منزلية";
   const productRef = useRef<HTMLElement>(null);
   useEffect(() => {
+    let isActive = true;
+    let productRequestId = 0;
+    let categoryRequestId = 0;
     const refreshProducts = () => {
+      const requestId = ++productRequestId;
       void loadStorefrontProducts([])
         .then((rows) => {
+          if (!isActive || requestId !== productRequestId) return;
           setProducts(rows);
           setCatalogError("");
         })
-        .catch((error) => setCatalogError(error.message))
-        .finally(() => setCatalogLoading(false));
+        .catch((error) => {
+          if (isActive && requestId === productRequestId) setCatalogError(error.message);
+        })
+        .finally(() => {
+          if (isActive && requestId === productRequestId) setCatalogLoading(false);
+        });
     };
     const refreshCategories = () => {
+      const requestId = ++categoryRequestId;
       void loadStorefrontCategories(staticCategories)
-        .then(setCategoryList)
-        .catch((error) => setCatalogError(error.message));
+        .then((rows) => {
+          if (isActive && requestId === categoryRequestId) setCategoryList(rows);
+        })
+        .catch((error) => {
+          if (isActive && requestId === categoryRequestId) setCatalogError(error.message);
+        });
     };
     refreshProducts();
     refreshCategories();
@@ -172,6 +189,9 @@ export function Storefront() {
     const t = setInterval(() => setNow(Date.now()), 1000);
     setNow(Date.now());
     return () => {
+      isActive = false;
+      productRequestId += 1;
+      categoryRequestId += 1;
       window.removeEventListener("focus", refreshProducts);
       clearInterval(t);
       unsubscribeCatalog();
@@ -187,13 +207,19 @@ export function Storefront() {
       current
         .map((line) => {
           const product = products.find((item) => item.id === line.id);
-          return product && typeof product.stock === "number" && product.stock > 0
+          const isExpiredQuickListing =
+            product?.isQuickListing &&
+            (!product.expiresAt || new Date(product.expiresAt).getTime() <= now);
+          return product &&
+            !isExpiredQuickListing &&
+            typeof product.stock === "number" &&
+            product.stock > 0
             ? { ...line, quantity: Math.min(line.quantity, product.stock) }
             : null;
         })
         .filter((line): line is CartLine => Boolean(line && line.quantity > 0)),
     );
-  }, [products, catalogLoading, catalogError]);
+  }, [products, catalogLoading, catalogError, now]);
   useEffect(() => {
     if (storyViewerIndex === null) return;
     document.body.style.overflow = "hidden";
@@ -328,20 +354,37 @@ export function Storefront() {
       cleanup?.();
     };
   }, [loaded]);
-  const filtered = useMemo(
-    () => (active === "all" ? products : products.filter((p) => p.category === active)),
-    [active, products],
+  const availableProducts = useMemo(
+    () =>
+      products.filter(
+        (product) =>
+          !product.isQuickListing ||
+          Boolean(product.expiresAt && new Date(product.expiresAt).getTime() > now),
+      ),
+    [products, now],
   );
-  const featured = products.filter((p) =>
+  const filtered = useMemo(
+    () =>
+      active === "all"
+        ? availableProducts
+        : availableProducts.filter((product) => product.category === active),
+    [active, availableProducts],
+  );
+  const featured = availableProducts.filter((p) =>
     ["cofee-machine", "blender", "robot-cuiseur", "cocotte"].includes(p.category),
   );
-  const featuredProduct = featured[feature % featured.length] ?? products[0];
+  const featuredProduct = featured.length ? featured[feature % featured.length] : undefined;
   const count = cart.reduce((n, x) => n + x.quantity, 0);
   const total = cart.reduce(
     (n, x) => n + (products.find((p) => p.id === x.id)?.price || 0) * x.quantity,
     0,
   );
   function add(p: Product) {
+    if (p.isQuickListing && (!p.expiresAt || new Date(p.expiresAt).getTime() <= Date.now())) {
+      setOrderError("انتهت مدة هذا العرض ولم يعد متاحاً.");
+      setDrawer(true);
+      return;
+    }
     if (typeof p.stock === "number" && p.stock < 1) {
       setOrderError("هذا المنتج غير متوفر حالياً.");
       setDrawer(true);
@@ -763,6 +806,8 @@ export function Storefront() {
               src={featuredProduct.image}
               alt={featuredProduct.name}
               interactive={false}
+              slug={featuredProduct.id}
+              hasInlineImage={featuredProduct.hasInlineImage}
             />
             <div className="showcase-details reveal">
               <span className="eyebrow">
@@ -780,20 +825,22 @@ export function Storefront() {
               <Button className="btn" onClick={() => add(featuredProduct)}>
                 أضف إلى السلة <ShoppingBag size={16} />
               </Button>
-              <div className="showcase-controls">
-                <Button
-                  aria-label="المنتج التالي"
-                  onClick={() => setFeature((v) => (v + 1) % featured.length)}
-                >
-                  <ArrowRight size={16} />
-                </Button>
-                <Button
-                  aria-label="المنتج السابق"
-                  onClick={() => setFeature((v) => (v - 1 + featured.length) % featured.length)}
-                >
-                  <ArrowLeft size={16} />
-                </Button>
-              </div>
+              {featured.length > 1 && (
+                <div className="showcase-controls">
+                  <Button
+                    aria-label="المنتج التالي"
+                    onClick={() => setFeature((v) => (v + 1) % featured.length)}
+                  >
+                    <ArrowRight size={16} />
+                  </Button>
+                  <Button
+                    aria-label="المنتج السابق"
+                    onClick={() => setFeature((v) => (v - 1 + featured.length) % featured.length)}
+                  >
+                    <ArrowLeft size={16} />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -873,14 +920,12 @@ export function Storefront() {
                         -{Math.round((1 - p.price / p.oldPrice) * 100)}%
                       </span>
                     )}
-                    <img
+                    <StorefrontProductImage
                       src={p.image}
                       loading="lazy"
                       alt={p.name}
-                      onError={(event) => {
-                        if (!event.currentTarget.src.endsWith("/topchamal-logo.jpg"))
-                          event.currentTarget.src = "/topchamal-logo.jpg";
-                      }}
+                      slug={p.id}
+                      hasInlineImage={p.hasInlineImage}
                     />
                     <span className="product-hold-hint">اضغط مطولاً للمعاينة</span>
                     {p.stock === 0 && <span className="stock-badge">غير متوفر حالياً</span>}
@@ -1079,7 +1124,12 @@ export function Storefront() {
               <X size={19} />
             </Button>
             <div className="product-preview-image">
-              <img src={previewProduct.image} alt={previewProduct.name} />
+              <StorefrontProductImage
+                src={previewProduct.image}
+                alt={previewProduct.name}
+                slug={previewProduct.id}
+                hasInlineImage={previewProduct.hasInlineImage}
+              />
             </div>
             <div className="product-preview-copy">
               <span className="tag">{categoryName(previewProduct.category)}</span>

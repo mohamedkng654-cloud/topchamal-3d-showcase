@@ -365,6 +365,24 @@ export type Database = {
     }
     Functions: {
       create_public_order: { Args: { payload: Json }; Returns: Json }
+      get_storefront_products: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          category_slug: string | null
+          description: string | null
+          discount_price_mad: number | null
+          expires_at: string | null
+          has_inline_image: boolean
+          id: string
+          image_url: string | null
+          is_quick_listing: boolean
+          name: string
+          price_mad: number
+          slug: string
+          stock: number
+        }[]
+      }
+      get_storefront_product_image: { Args: { product_slug: string }; Returns: string | null }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
