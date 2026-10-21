@@ -23,6 +23,8 @@ import {
   Tag,
   Users,
   SlidersHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getAdminProfile, signOutAdmin } from "@/lib/admin-auth";
@@ -53,6 +55,7 @@ const navigation = [
 ] as const;
 
 const NAV_VISIBILITY_STORAGE_KEY = "topchamal-admin-nav-visibility";
+const SIDEBAR_COMPACT_STORAGE_KEY = "topchamal-admin-sidebar-compact";
 const defaultAdminNavVisibility = Object.fromEntries(
   navigation.map(({ to }) => [to, true]),
 ) as Record<string, boolean>;
@@ -80,6 +83,11 @@ function AdminLayout() {
   const [legacySyncError, setLegacySyncError] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [customizerOpen, setCustomizerOpen] = useState(false);
+  const [compactSidebar, setCompactSidebar] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const saved = window.localStorage.getItem(SIDEBAR_COMPACT_STORAGE_KEY);
+    return saved ? saved === "true" : false;
+  });
   const [navVisibility, setNavVisibility] = useState<Record<string, boolean>>(() =>
     loadAdminNavVisibility(),
   );
@@ -87,6 +95,10 @@ function AdminLayout() {
   useEffect(() => {
     window.localStorage.setItem(NAV_VISIBILITY_STORAGE_KEY, JSON.stringify(navVisibility));
   }, [navVisibility]);
+
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_COMPACT_STORAGE_KEY, String(compactSidebar));
+  }, [compactSidebar]);
 
   const visibleNavigation = navigation.filter(({ to }) => navVisibility[to] !== false);
 
@@ -127,38 +139,55 @@ function AdminLayout() {
   if (!admin) return <Outlet />;
   return (
     <div className="admin-shell" dir="rtl">
-      <aside className="admin-sidebar">
+      <aside className={`admin-sidebar ${compactSidebar ? "admin-sidebar-compact" : ""}`}>
         <div className="admin-brand">
           <img
             className="admin-brand-logo"
             src="/topchamal-logo.jpg"
-            width="58"
-            height="38"
+            width={compactSidebar ? 42 : 58}
+            height={compactSidebar ? 28 : 38}
             alt="TopChamal"
           />
-          <div>
-            <strong>TopChamal</strong>
-            <small>لوحة الإدارة</small>
-          </div>
+          {!compactSidebar && (
+            <div>
+              <strong>TopChamal</strong>
+              <small>لوحة الإدارة</small>
+            </div>
+          )}
         </div>
 
-        <div className="admin-profile">
-          <span>{admin.display_name?.slice(0, 1) || admin.email.slice(0, 1).toUpperCase()}</span>
-          <div>
-            <strong>{admin.display_name || "مدير المتجر"}</strong>
-            <small>{admin.email}</small>
+        {!compactSidebar && (
+          <div className="admin-profile">
+            <span>{admin.display_name?.slice(0, 1) || admin.email.slice(0, 1).toUpperCase()}</span>
+            <div>
+              <strong>{admin.display_name || "مدير المتجر"}</strong>
+              <small>{admin.email}</small>
+            </div>
           </div>
-        </div>
+        )}
 
-        <button
-          type="button"
-          className="admin-customizer-button"
-          onClick={() => setCustomizerOpen((open) => !open)}
-          aria-expanded={customizerOpen}
-        >
-          <SlidersHorizontal size={15} />
-          تخصيص القائمة
-        </button>
+        <div className="admin-sidebar-tools">
+          <button
+            type="button"
+            className="admin-customizer-button"
+            onClick={() => setCustomizerOpen((open) => !open)}
+            aria-expanded={customizerOpen}
+          >
+            <SlidersHorizontal size={15} />
+            {!compactSidebar && "تخصيص القائمة"}
+          </button>
+
+          <button
+            type="button"
+            className="admin-customizer-button compact-toggle"
+            onClick={() => setCompactSidebar((value) => !value)}
+            aria-label={compactSidebar ? "توسيع الشريط" : "تقلص الشريط"}
+            title={compactSidebar ? "توسيع الشريط" : "تقلص الشريط"}
+          >
+            {compactSidebar ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+            {!compactSidebar && "تقلص القائمة"}
+          </button>
+        </div>
 
         {customizerOpen && (
           <div className="admin-customizer-panel">
@@ -213,7 +242,7 @@ function AdminLayout() {
             </button>
           </div>
         ) : (
-          <nav className="admin-nav">
+          <nav className={`admin-nav ${compactSidebar ? "admin-nav-compact" : ""}`}>
             {visibleNavigation.map(({ label, to, icon: Icon }) => (
               <Link
                 key={to}
@@ -223,8 +252,8 @@ function AdminLayout() {
                 title={label}
               >
                 <Icon size={18} />
-                <span>{label}</span>
-                <ChevronLeft size={14} className="nav-arrow" />
+                {!compactSidebar && <span>{label}</span>}
+                {!compactSidebar && <ChevronLeft size={14} className="nav-arrow" />}
               </Link>
             ))}
           </nav>
@@ -236,7 +265,7 @@ function AdminLayout() {
           aria-label="تسجيل الخروج"
           title="تسجيل الخروج"
         >
-          <LogOut size={18} /> تسجيل الخروج
+          <LogOut size={18} /> {!compactSidebar && "تسجيل الخروج"}
         </button>
       </aside>
 
@@ -255,7 +284,7 @@ function AdminLayout() {
               className="admin-sync-button"
               onClick={() => void syncNow()}
               disabled={syncing}
-              title="تحديث البيانات المشتركة"
+              title="تحديث البيانات المشترка"
             >
               <RefreshCw size={15} className={syncing ? "syncing" : ""} />
               <span>{syncing ? "جارٍ التحديث..." : "تحديث البيانات"}</span>
