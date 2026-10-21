@@ -102,6 +102,55 @@ function mapProduct(row: CatalogRow): StorefrontProduct {
   };
 }
 
+async function loadProductsFromPublicTable(): Promise<CatalogRow[]> {
+  const pageSize = 250;
+  const rows: CatalogRow[] = [];
+
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from("products")
+      .select(
+        "id,name,slug,description,price_mad,discount_price_mad,image_urls,stock,is_quick_listing,expires_at,created_at,categories(slug)",
+      )
+      .eq("status", "published")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+
+    if (error) throw error;
+    const page = data || [];
+    rows.push(
+      ...page
+        .filter(
+          (row) =>
+            !row.is_quick_listing ||
+            (row.expires_at != null && new Date(row.expires_at).getTime() > Date.now()),
+        )
+        .map((row) => {
+          const firstImage = row.image_urls[0] || null;
+          return {
+            id: row.id,
+            name: row.name,
+            slug: row.slug,
+            description: row.description,
+            price_mad: row.price_mad,
+            discount_price_mad: row.discount_price_mad,
+            image_url: firstImage?.startsWith("data:") ? null : firstImage,
+            has_inline_image: Boolean(firstImage?.startsWith("data:image/")),
+            stock: row.stock,
+            is_quick_listing: row.is_quick_listing,
+            expires_at: row.expires_at,
+            category_slug: row.categories?.slug || null,
+            created_at: row.created_at,
+          };
+        }),
+    );
+
+    if (page.length < pageSize) break;
+  }
+
+  return rows;
+}
+
 export async function loadStorefrontProductImage(slug: string): Promise<string | null> {
   const cached = productImageCache.get(slug);
   if (cached) return cached;
@@ -133,14 +182,25 @@ export async function loadStorefrontProducts(
 
   const requestVersion = productsRequestVersion;
   const request = (async () => {
-    const { data, error } = await supabase.rpc("get_storefront_products");
-    if (error || !data) {
-      console.error("[Storefront] Could not load shared catalog", error);
-      if (productsCache?.data.length) return productsCache.data;
-      throw new Error("تعذر تحميل المنتجات. حاول تحديث الصفحة.");
+    const { data: rpcData, error: rpcError } = await supabase.rpc("get_storefront_products");
+    let catalogRows: CatalogRow[];
+    if (rpcError || !rpcData) {
+      try {
+        catalogRows = await loadProductsFromPublicTable();
+        console.warn("[Storefront] Product RPC failed; loaded the public table instead", rpcError);
+      } catch (fallbackError) {
+        console.error("[Storefront] Could not load products from RPC or public table", {
+          rpcError,
+          fallbackError,
+        });
+        if (productsCache?.data.length) return productsCache.data;
+        throw new Error("تعذر تحميل المنتجات. حاول تحديث الصفحة.");
+      }
+    } else {
+      catalogRows = rpcData as CatalogRow[];
     }
     const local = new Map(fallback.map((p) => [p.id, p]));
-    const rows = (data as CatalogRow[]).map((row) => {
+    const rows = catalogRows.map((row) => {
       const product = mapProduct(row);
       const match = local.get(product.id);
       return match && product.image === fallbackImage
