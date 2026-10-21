@@ -355,31 +355,44 @@ function AdminProducts() {
   }
 
   async function imageToDataUrl(file: File): Promise<string> {
-    if (typeof createImageBitmap === "undefined")
-      return await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ""));
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
-      });
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, 1400 / Math.max(bitmap.width, bitmap.height));
+    let source: CanvasImageSource;
+    let sourceWidth: number;
+    let sourceHeight: number;
+    let bitmap: ImageBitmap | undefined;
+    let objectUrl: string | undefined;
+    if (typeof createImageBitmap !== "undefined") {
+      bitmap = await createImageBitmap(file);
+      source = bitmap;
+      sourceWidth = bitmap.width;
+      sourceHeight = bitmap.height;
+    } else {
+      objectUrl = URL.createObjectURL(file);
+      const image = new Image();
+      image.src = objectUrl;
+      await image.decode();
+      source = image;
+      sourceWidth = image.naturalWidth;
+      sourceHeight = image.naturalHeight;
+    }
+    const scale = Math.min(1, 2560 / Math.max(sourceWidth, sourceHeight));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
-    return canvas.toDataURL("image/jpeg", 0.82);
+    canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+    canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+    try {
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Image processing is unavailable in this browser.");
+      context.drawImage(source, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/webp", 0.92);
+    } finally {
+      bitmap?.close();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    }
   }
 
   function readImageFile(file: File | undefined) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       setError("اختر ملف صورة صالحاً.");
-      return;
-    }
-    if (file.size > 4 * 1024 * 1024) {
-      setError("حجم الصورة يجب أن يكون أقل من 4 ميغابايت.");
       return;
     }
     setImageScanLoading(true);
@@ -441,8 +454,8 @@ function AdminProducts() {
 
   function readBulkImageFile(index: number, file: File | undefined) {
     if (!file) return;
-    if (!file.type.startsWith("image/") || file.size > 4 * 1024 * 1024) {
-      setError("كل صورة يجب أن تكون صالحة وأقل من 4 ميغابايت.");
+    if (!file.type.startsWith("image/")) {
+      setError("كل ملف يجب أن يكون صورة صالحة.");
       return;
     }
     void imageToDataUrl(file)
@@ -1468,6 +1481,9 @@ function AdminProducts() {
           </label>
           <label className="admin-form-wide">
             <span>صورة المنتج *</span>
+            <small>
+              لا يوجد حد لحجم الملف الأصلي؛ تُجهز الصورة بدقة تصل إلى 2560 بكسل وجودة 92%.
+            </small>
             <input
               type="file"
               accept="image/*"
@@ -1475,8 +1491,8 @@ function AdminProducts() {
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
-                if (!file.type.startsWith("image/") || file.size > 4 * 1024 * 1024) {
-                  setError("اختر صورة صالحة لا يتجاوز حجمها 4 ميغابايت.");
+                if (!file.type.startsWith("image/")) {
+                  setError("اختر ملف صورة صالحاً.");
                   event.target.value = "";
                   return;
                 }
@@ -1646,6 +1662,9 @@ function AdminProducts() {
               accept="image/*"
               onChange={(event) => readImageFile(event.target.files?.[0])}
             />
+            <small>
+              لا يوجد حد لحجم الملف الأصلي؛ تُجهز الصورة بدقة تصل إلى 2560 بكسل وجودة 92%.
+            </small>
             <div className="product-image-ai-actions">
               <small>
                 {imageScanLoading
@@ -1742,7 +1761,7 @@ function AdminProducts() {
                           className="admin-product-thumb"
                           src={product.image_urls[0]}
                           alt={`صورة ${product.name}`}
-                          loading="lazy"
+                          loading="eager"
                           onError={(event) => {
                             event.currentTarget.style.display = "none";
                             event.currentTarget.nextElementSibling?.removeAttribute("hidden");

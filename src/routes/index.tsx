@@ -94,7 +94,7 @@ function PictureView({
         src={src}
         alt={alt}
         className="scene-picture"
-        loading={interactive ? "eager" : "lazy"}
+        loading="eager"
         slug={slug}
         hasInlineImage={hasInlineImage}
       />
@@ -779,7 +779,7 @@ export function Storefront() {
                   <div className="category-image">
                     {image ? (
                       <img
-                        loading="lazy"
+                        loading="eager"
                         src={image}
                         alt={c.label}
                         onError={(event) => {
@@ -922,7 +922,7 @@ export function Storefront() {
                     )}
                     <StorefrontProductImage
                       src={p.image}
-                      loading="lazy"
+                      loading="eager"
                       alt={p.name}
                       slug={p.id}
                       hasInlineImage={p.hasInlineImage}

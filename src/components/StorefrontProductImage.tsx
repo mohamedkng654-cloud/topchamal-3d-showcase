@@ -16,7 +16,7 @@ export function StorefrontProductImage({
   alt,
   className,
   hasInlineImage = false,
-  loading = "lazy",
+  loading = "eager",
   slug,
   src,
 }: StorefrontProductImageProps) {
@@ -25,29 +25,13 @@ export function StorefrontProductImage({
 
   useEffect(() => {
     if (!hasInlineImage || !slug || !imageRef.current) return;
-    const image = imageRef.current;
     let active = true;
-    const loadImage = () => {
-      observer?.disconnect();
-      void loadStorefrontProductImage(slug).then((url) => {
-        if (active && url) setInlineImage(url);
-      });
-    };
-    const observer =
-      typeof IntersectionObserver === "undefined"
-        ? undefined
-        : new IntersectionObserver(
-            ([entry]) => {
-              if (entry?.isIntersecting) loadImage();
-            },
-            { rootMargin: "240px" },
-          );
-    if (observer) observer.observe(image);
-    else loadImage();
+    void loadStorefrontProductImage(slug).then((url) => {
+      if (active && url) setInlineImage(url);
+    });
 
     return () => {
       active = false;
-      observer?.disconnect();
     };
   }, [hasInlineImage, slug]);
 
