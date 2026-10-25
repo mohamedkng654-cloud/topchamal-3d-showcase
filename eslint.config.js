@@ -9,6 +9,7 @@ export default tseslint.config(
   {
     ignores: [
       "dist",
+      "dist-static",
       ".output",
       ".vinxi",
       "src/integrations/supabase/previewAuthStorage.ts",
