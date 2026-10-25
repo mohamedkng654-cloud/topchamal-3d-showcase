@@ -214,3 +214,92 @@
   .product-card:hover{transform:none}
   .product-card-quick::before { box-shadow: none; }
 }
+
+.instant-section {
+  position: relative;
+  overflow: hidden;
+  border-block: 1px solid color-mix(in oklab, var(--primary) 32%, var(--border));
+  background: linear-gradient(135deg, color-mix(in oklab, var(--secondary) 24%, var(--background)), var(--background) 72%);
+}
+.instant-section::before {
+  position: absolute;
+  inset-inline-end: -150px;
+  top: -220px;
+  width: 560px;
+  height: 560px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in oklab, var(--primary) 19%, transparent), transparent 70%);
+  content: "";
+  pointer-events: none;
+}
+.instant-section > .wrap { position: relative; z-index: 1; }
+.instant-heading { display: flex; align-items: center; justify-content: space-between; gap: 32px; margin-bottom: 34px; }
+.instant-heading .eyebrow { display: inline-flex; align-items: center; gap: 9px; }
+.instant-heading .eyebrow svg { color: var(--primary); }
+.instant-intro { max-width: 600px; margin: 14px 0 0; color: var(--muted-foreground); font-size: 14px; line-height: 1.9; }
+.instant-mark {
+  width: 142px;
+  height: 142px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1px solid color-mix(in oklab, var(--primary) 58%, var(--border));
+  border-radius: 50%;
+  color: var(--primary);
+  background: color-mix(in oklab, var(--card) 84%, transparent);
+  box-shadow: 0 0 0 9px color-mix(in oklab, var(--primary) 6%, transparent), 0 20px 55px color-mix(in oklab, var(--background) 42%, transparent);
+  transform: rotate(7deg);
+}
+.instant-mark span { font: 600 8px Inter, sans-serif; letter-spacing: .2em; }
+.instant-mark strong { color: var(--foreground); font-size: 27px; line-height: 1.2; }
+.instant-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.instant-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--primary) 25%, var(--border));
+  border-radius: 16px;
+  background: linear-gradient(160deg, color-mix(in oklab, var(--primary) 8%, var(--card)), var(--card) 55%);
+  box-shadow: 0 16px 38px color-mix(in oklab, var(--background) 30%, transparent);
+  transition: transform .28s ease, border-color .28s ease, box-shadow .28s ease;
+}
+.instant-card:hover { transform: translateY(-6px); border-color: var(--primary); box-shadow: 0 24px 48px color-mix(in oklab, var(--primary) 15%, transparent); }
+.instant-image { aspect-ratio: 1 / 1; position: relative; display: grid; place-items: center; overflow: hidden; padding: 22px; background: radial-gradient(circle at 50% 40%, color-mix(in oklab, var(--accent) 45%, var(--card)), var(--card) 72%); }
+.instant-image img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 18px 18px color-mix(in oklab, var(--background) 35%, transparent)); transition: transform .45s cubic-bezier(.2,.8,.2,1); }
+.instant-card:hover .instant-image img { transform: scale(1.075) rotate(-1deg); }
+.instant-stock { position: absolute; top: 12px; right: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 5px; max-width: calc(100% - 24px); padding: 7px 10px; border: 1px solid color-mix(in oklab, var(--secondary) 66%, var(--border)); border-radius: 999px; color: var(--foreground); background: color-mix(in oklab, var(--background) 86%, transparent); backdrop-filter: blur(8px); font-size: 10px; font-weight: 800; white-space: nowrap; }
+.instant-stock svg { color: var(--primary); flex: none; }
+.instant-number { position: absolute; bottom: 12px; left: 14px; color: color-mix(in oklab, var(--primary) 72%, transparent); font-size: 12px; font-weight: 700; }
+.instant-info { padding: 16px; }
+.instant-category { color: var(--primary); font-size: 10px; font-weight: 700; }
+.instant-info h3 { min-height: 42px; margin: 7px 0 8px; font: 600 13px/1.55 Inter, sans-serif; direction: ltr; text-align: right; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.instant-info p { min-height: 38px; margin: 0 0 14px; color: var(--muted-foreground); font-size: 11px; line-height: 1.7; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.instant-bottom { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
+.instant-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; color: var(--primary); font: 800 16px Inter, sans-serif; white-space: nowrap; }
+.instant-price small { color: var(--foreground); font: 600 11px Cairo, sans-serif; }
+.instant-price del { flex-basis: 100%; color: var(--muted-foreground); font: 10px Inter, sans-serif; }
+.instant-add { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--primary); border-radius: 8px; color: var(--primary-foreground); background: var(--primary); font-size: 10px; font-weight: 800; white-space: nowrap; }
+.instant-add:hover { background: var(--secondary); border-color: var(--secondary); }
+.instant-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 24px; color: var(--muted-foreground); font-size: 11px; }
+.instant-footer .btn { color: var(--foreground); }
+@media (max-width: 1050px) { .instant-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) {
+  .instant-heading { align-items: flex-start; gap: 16px; margin-bottom: 25px; }
+  .instant-heading .eyebrow { font-size: 9px; letter-spacing: .12em; }
+  .instant-heading .section-heading { font-size: 29px; }
+  .instant-intro { font-size: 12px; }
+  .instant-mark { width: 94px; height: 94px; margin-top: 12px; }
+  .instant-mark span { font-size: 6px; }
+  .instant-mark strong { font-size: 20px; }
+  .instant-grid { grid-auto-columns: minmax(78%, 1fr); grid-auto-flow: column; grid-template-columns: none; overflow-x: auto; padding: 4px 2px 14px; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+  .instant-card { scroll-snap-align: start; }
+  .instant-info { padding: 14px; }
+  .instant-footer { align-items: flex-start; flex-direction: column-reverse; }
+  .instant-footer .btn { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .instant-card, .instant-image img { transition: none; }
+  .instant-card:hover { transform: none; }
+}

@@ -44,6 +44,7 @@ const brandLogo = "/topchamal-logo.jpg";
 
 type Product = StorefrontProduct;
 type CartLine = { id: string; quantity: number };
+const isInStock = (product: Product) => typeof product.stock === "number" && product.stock > 0;
 function categoryImageFor(category: string, products: Product[]): string | undefined {
   const mapped = catalog.categoryImages[category as keyof typeof catalog.categoryImages];
   const productImage = products.find((product) => product.category === category)?.image;
@@ -112,6 +113,7 @@ export function Storefront() {
   const [orderError, setOrderError] = useState("");
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [active, setActive] = useState("all");
+  const [showAvailableOnly, setShowAvailableOnly] = useState(false);
   const [feature, setFeature] = useState(0);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [drawer, setDrawer] = useState(false);
@@ -363,14 +365,17 @@ export function Storefront() {
       ),
     [products, now],
   );
+  const inStockProducts = useMemo(() => availableProducts.filter(isInStock), [availableProducts]);
   const filtered = useMemo(
     () =>
-      active === "all"
-        ? availableProducts
-        : availableProducts.filter((product) => product.category === active),
-    [active, availableProducts],
+      availableProducts.filter(
+        (product) =>
+          (active === "all" || product.category === active) &&
+          (!showAvailableOnly || isInStock(product)),
+      ),
+    [active, availableProducts, showAvailableOnly],
   );
-  const featured = availableProducts.filter((p) =>
+  const featured = inStockProducts.filter((p) =>
     ["cofee-machine", "blender", "robot-cuiseur", "cocotte"].includes(p.category),
   );
   const featuredProduct = featured.length ? featured[feature % featured.length] : undefined;
@@ -433,6 +438,7 @@ export function Storefront() {
   }
   function choose(id: string) {
     setActive(id);
+    setShowAvailableOnly(false);
     document.getElementById("products")?.scrollIntoView({ behavior: "smooth" });
   }
   async function order(e: React.FormEvent<HTMLFormElement>) {
@@ -509,6 +515,7 @@ export function Storefront() {
           <nav className="desktop-nav" aria-label="القائمة الرئيسية">
             <a href="#home">الرئيسية</a>
             <a href="#categories">التصنيفات</a>
+            <a href="#available-now">متوفرة الآن</a>
             <a href="#products">المنتجات</a>
             <a href="#about">لماذا نحن</a>
             <a href="#faq">الأسئلة الشائعة</a>
@@ -541,6 +548,9 @@ export function Storefront() {
           <nav className="mobile-nav">
             <a onClick={() => setMenu(false)} href="#categories">
               التصنيفات
+            </a>
+            <a onClick={() => setMenu(false)} href="#available-now">
+              متوفرة الآن
             </a>
             <a onClick={() => setMenu(false)} href="#products">
               المنتجات
@@ -799,6 +809,83 @@ export function Storefront() {
           </div>
         </div>
       </section>
+      {inStockProducts.length > 0 && (
+        <section
+          className="section instant-section"
+          id="available-now"
+          aria-labelledby="instant-heading"
+        >
+          <div className="wrap">
+            <div className="instant-heading">
+              <div>
+                <span className="eyebrow">
+                  <Sparkles size={14} aria-hidden="true" /> AVAILABLE NOW · متوفر الآن
+                </span>
+                <h2 className="section-heading" id="instant-heading">
+                  اختيارات جاهزة لبيتك
+                </h2>
+                <p className="instant-intro">
+                  منتجات متوفرة فعلياً في المتجر — اختر ما يعجبك وابدأ طلبك مباشرة.
+                </p>
+              </div>
+              <div className="instant-mark" aria-hidden="true">
+                <span>TOPCHAMAL</span>
+                <strong>متوفر</strong>
+                <span>الآن</span>
+              </div>
+            </div>
+            <div className="instant-grid">
+              {inStockProducts.slice(0, 4).map((product, index) => (
+                <article className="instant-card" key={product.id}>
+                  <div className="instant-image">
+                    <StorefrontProductImage
+                      src={product.image}
+                      alt={product.name}
+                      loading="lazy"
+                      slug={product.id}
+                      hasInlineImage={product.hasInlineImage}
+                    />
+                    <span className="instant-stock">
+                      <Check size={13} aria-hidden="true" /> متوفر الآن
+                    </span>
+                    <span className="instant-number num">{String(index + 1).padStart(2, "0")}</span>
+                  </div>
+                  <div className="instant-info">
+                    <span className="instant-category">{categoryName(product.category)}</span>
+                    <h3>{product.name}</h3>
+                    <p>{product.description}</p>
+                    <div className="instant-bottom">
+                      <div className="instant-price">
+                        <span className="num">{formatPrice(product.price)}</span>
+                        <small>د.م</small>
+                        {product.oldPrice && (
+                          <del className="num">{formatPrice(product.oldPrice)} د.م</del>
+                        )}
+                      </div>
+                      <Button className="instant-add" onClick={() => add(product)}>
+                        أضف للسلة <ShoppingBag size={16} aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="instant-footer">
+              <span>يُحدّث التوفر تلقائياً مع كتالوج المتجر.</span>
+              <Button
+                className="btn btn-outline"
+                onClick={() => {
+                  setActive("all");
+                  setShowAvailableOnly(true);
+                  document.getElementById("products")?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
+                تصفح كل المتوفر ({inStockProducts.length}) <ArrowLeft size={16} />
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
       {featuredProduct && (
         <section className="section showcase" id="featured">
           <div className="wrap showcase-grid">
@@ -862,16 +949,31 @@ export function Storefront() {
           </div>
           <div className="filter-row" aria-label="تصفية حسب التصنيف">
             <Button
-              className={`filter-btn ${active === "all" ? "active" : ""}`}
-              onClick={() => setActive("all")}
+              className={`filter-btn ${active === "all" && !showAvailableOnly ? "active" : ""}`}
+              onClick={() => {
+                setActive("all");
+                setShowAvailableOnly(false);
+              }}
             >
               جميع المنتجات
+            </Button>
+            <Button
+              className={`filter-btn ${showAvailableOnly ? "active" : ""}`}
+              onClick={() => {
+                setActive("all");
+                setShowAvailableOnly(true);
+              }}
+            >
+              <Check size={14} aria-hidden="true" /> متوفرة الآن
             </Button>
             {categoryList.map((c) => (
               <Button
                 key={c.id}
                 className={`filter-btn ${active === c.id ? "active" : ""}`}
-                onClick={() => setActive(c.id)}
+                onClick={() => {
+                  setActive(c.id);
+                  setShowAvailableOnly(false);
+                }}
               >
                 {c.label}
               </Button>
@@ -955,7 +1057,11 @@ export function Storefront() {
           ) : (
             <div className="empty">
               <Package size={32} />
-              <p>لا توجد منتجات في هذا التصنيف حالياً.</p>
+              <p>
+                {showAvailableOnly
+                  ? "لا توجد منتجات متوفرة حالياً. تحقق مرة أخرى قريباً."
+                  : "لا توجد منتجات في هذا التصنيف حالياً."}
+              </p>
               <Button className="btn btn-outline" onClick={() => setActive("all")}>
                 عرض جميع المنتجات
               </Button>
