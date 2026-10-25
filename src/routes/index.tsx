@@ -104,6 +104,10 @@ function PictureView({
 export function Storefront() {
   const [siteSettings, setSiteSettings] = useState(defaultSiteSettings);
   const whatsappNumber = configuredWhatsAppNumber(siteSettings.whatsapp);
+  const openPolicy = (id: string) => {
+    const policy = document.getElementById(id);
+    if (policy instanceof HTMLDetailsElement) policy.open = true;
+  };
   const [products, setProducts] = useState<Product[]>([]);
   const [categoryList, setCategoryList] = useState<StorefrontCategory[]>(staticCategories);
   const [scrolled, setScrolled] = useState(false);
@@ -513,9 +517,6 @@ export function Storefront() {
             <a href="#about">لماذا نحن</a>
             <a href="#faq">الأسئلة الشائعة</a>
           </nav>
-          <a className="btn btn-outline admin-link" href="/admin/login?login=1">
-            تسجيل دخول الإدارة
-          </a>
           <div className="header-actions">
             <Button
               variant="ghost"
@@ -1049,6 +1050,36 @@ export function Storefront() {
           </div>
         </div>
       </section>
+      <section className="section faq-section" id="policies">
+        <div className="wrap">
+          <span className="eyebrow">STORE POLICIES</span>
+          <h2 className="section-heading">سياسات المتجر</h2>
+          <div className="faq-list">
+            <details id="policy-terms">
+              <summary>شروط الاستخدام</summary>
+              <p>
+                الأسعار معروضة بالدرهم المغربي وقد تتغير حسب التوفر. لا يُعتبر الطلب نهائياً إلا بعد
+                تأكيده مع المتجر عبر واتساب، ويتم الدفع عند الاستلام.
+              </p>
+            </details>
+            <details id="policy-privacy">
+              <summary>سياسة الخصوصية</summary>
+              <p>
+                نستخدم الاسم ورقم الهاتف والمدينة التي تُدخلها فقط لمعالجة طلبك والتواصل معك بشأن
+                التوصيل. لا نبيع بياناتك ولا نشاركها مع أطراف أخرى لأغراض تسويقية، ويمكنك طلب حذفها
+                بالتواصل مع المتجر.
+              </p>
+            </details>
+            <details id="policy-returns">
+              <summary>الاستبدال والاسترجاع</summary>
+              <p>
+                افحص المنتج عند الاستلام، وفي حال وجود عيب أو خطأ في الطلب تواصل مع المتجر عبر واتساب
+                في أقرب وقت لترتيب الاستبدال أو الاسترجاع حسب حالة المنتج.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
       <footer className="footer" id="contact">
         <div className="wrap">
           <div className="footer-grid">
@@ -1074,25 +1105,23 @@ export function Storefront() {
               <h4>المساعدة</h4>
               <a href="#faq">الأسئلة الشائعة</a>
               <a href="#about">التوصيل والدفع</a>
-              <a href="https://topchamal.ma/pages/contact-us" target="_blank" rel="noreferrer">
-                التواصل مع المتجر
-              </a>
+              {whatsappNumber ? (
+                <a
+                  href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("مرحباً، أريد الاستفسار عن منتجات Topchamal")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  التواصل مع المتجر
+                </a>
+              ) : (
+                <a href="#faq">التواصل مع المتجر</a>
+              )}
             </div>
             <div>
               <h4>السياسات</h4>
-              <a
-                href="https://topchamal.ma/pages/terms-and-conditions"
-                target="_blank"
-                rel="noreferrer"
-              >
-                شروط الاستخدام
-              </a>
-              <a href="https://topchamal.ma/pages/privacy-policy" target="_blank" rel="noreferrer">
-                سياسة الخصوصية
-              </a>
-              <a href="https://topchamal.ma/pages/return-policy" target="_blank" rel="noreferrer">
-                الاستبدال والاسترجاع
-              </a>
+              <a href="#policy-terms" onClick={() => openPolicy("policy-terms")}>شروط الاستخدام</a>
+              <a href="#policy-privacy" onClick={() => openPolicy("policy-privacy")}>سياسة الخصوصية</a>
+              <a href="#policy-returns" onClick={() => openPolicy("policy-returns")}>الاستبدال والاسترجاع</a>
             </div>
           </div>
           <div className="footer-bottom">
