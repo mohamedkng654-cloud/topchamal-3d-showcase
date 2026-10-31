@@ -1,5 +1,5 @@
 -- Seed the current published catalog into the shared database.
--- The slug upserts make this migration safe to apply more than once.
+-- This version matches the live products schema, which has no tags column.
 insert into public.categories (name, slug, sort_order, is_active)
 values ('عصارات', 'presse', 5, true)
 on conflict (slug) do update set name = excluded.name, is_active = true;

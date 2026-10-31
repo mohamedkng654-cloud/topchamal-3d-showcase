@@ -31,8 +31,8 @@ with check (public.is_admin());
 
 drop policy if exists "public reads site content" on public.site_content;
 create policy "public reads site content"
-on public.site_content for select
-using (true);
+on public.site_content for select to anon, authenticated
+using (key in ('site_settings', 'stories'));
 
 insert into public.site_content (key, value)
 values ('stories', '[]'::jsonb)
