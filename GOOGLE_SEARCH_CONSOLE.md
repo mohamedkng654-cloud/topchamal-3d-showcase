@@ -1,5 +1,9 @@
 # Google Search Console and recovery checklist
 
+## Temporary canonical host
+
+As of 2026-10-31, the owner selected `https://topchamal.lovable.app/` as the temporary canonical host while `topchamal.ma` is expired. The repository's canonical metadata, `robots.txt` sitemap location, and homepage sitemap entry should use the Lovable host until the custom domain is restored and the owner confirms a switch back. This source configuration does not by itself prove that the public Lovable deployment has been updated.
+
 ## Current production status (checked 2026-10-25)
 
 The apex domain `https://topchamal.ma/` and `https://www.topchamal.ma/` both currently return a domain-expired notice (HTTP 200). The apex and `www` versions of `/robots.txt` and `/sitemap.xml` currently return HTTP 404. Google search results also show the expired-domain notice while retaining older product and collection URLs.

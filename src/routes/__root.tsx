@@ -11,7 +11,7 @@ import {
 import { type ReactNode } from "react";
 import appCss from "../styles.css?url";
 
-const siteUrl = "https://topchamal.ma";
+const siteUrl = "https://topchamal.lovable.app/";
 const googleSiteVerification =
   (import.meta.env["VITE_GOOGLE_SITE_VERIFICATION"] as string | undefined) ||
   "google349eb3537ba0f8c5";
@@ -87,6 +87,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:url", content: siteUrl },
       { property: "og:site_name", content: "Topchamal" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Topchamal | أجهزة منزلية لكل لحظة" },
+      { name: "twitter:description", content: "تشكيلة Topchamal من الأجهزة المنزلية في المغرب." },
+      { property: "og:image", content: "https://topchamal.lovable.app/topchamal-logo.jpg" },
+      { property: "og:image:alt", content: "Topchamal Premium Moroccan Cookware" },
+      { name: "twitter:image", content: "https://topchamal.lovable.app/topchamal-logo.jpg" },
+      { name: "twitter:image:alt", content: "Topchamal Premium Moroccan Cookware" },
       ...(googleSiteVerification
         ? [{ name: "google-site-verification", content: googleSiteVerification }]
         : []),

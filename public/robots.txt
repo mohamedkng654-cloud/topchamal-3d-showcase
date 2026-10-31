@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin
 Disallow: /api/
 
-Sitemap: https://topchamal.ma/sitemap.xml
+Sitemap: https://topchamal.lovable.app/sitemap.xml
