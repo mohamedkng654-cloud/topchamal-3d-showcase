@@ -71,12 +71,16 @@ export async function loadStorefrontCategories(
     console.error("[Storefront] Could not load shared categories", error);
     throw new Error("تعذر تحميل التصنيفات. حاول تحديث الصفحة.");
   }
-  return (data as Array<{ slug: string; name: string; sort_order: number }>).map((row) => ({
-    id: row.slug,
-    label: row.name,
-    fr: row.slug.replace(/[-_]+/g, " ").toUpperCase(),
-    sort_order: row.sort_order,
-  }));
+  const fallbackById = new Map(fallback.map((category) => [category.id, category]));
+  return (data as Array<{ slug: string; name: string; sort_order: number }>).map((row) => {
+    const fallbackCategory = fallbackById.get(row.slug);
+    return {
+      id: row.slug,
+      label: row.name,
+      fr: fallbackCategory?.fr || row.slug.replace(/[-_]+/g, " ").toUpperCase(),
+      sort_order: row.sort_order,
+    };
+  });
 }
 
 function mapProduct(row: CatalogRow): StorefrontProduct {

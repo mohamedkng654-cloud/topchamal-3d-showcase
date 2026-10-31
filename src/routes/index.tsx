@@ -1400,13 +1400,12 @@ export function Storefront() {
                   const p = products.find((x) => x.id === line.id);
                   return p ? (
                     <div className="cart-line" key={line.id}>
-                      <img
+                      <StorefrontProductImage
                         src={p.image}
                         alt={p.name}
-                        onError={(event) => {
-                          if (!event.currentTarget.src.endsWith("/topchamal-logo.jpg"))
-                            event.currentTarget.src = "/topchamal-logo.jpg";
-                        }}
+                        loading="lazy"
+                        slug={p.id}
+                        hasInlineImage={p.hasInlineImage}
                       />
                       <div>
                         <strong>{p.name}</strong>

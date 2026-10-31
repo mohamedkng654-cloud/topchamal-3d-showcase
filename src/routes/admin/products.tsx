@@ -207,6 +207,7 @@ function AdminProducts() {
   const [bulkText, setBulkText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [imageScanLoading, setImageScanLoading] = useState(false);
+  const [quickName, setQuickName] = useState("");
   const [quickImage, setQuickImage] = useState("");
   const [quickPrice, setQuickPrice] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
@@ -593,7 +594,12 @@ function AdminProducts() {
     event.preventDefault();
     setError("");
     setNotice("");
+    const name = quickName.trim();
     const price = Number(quickPrice);
+    if (!name) {
+      setError("أدخل اسم المنتج.");
+      return;
+    }
     if (!quickImage) {
       setError("اختر صورة المنتج أولاً.");
       return;
@@ -610,7 +616,7 @@ function AdminProducts() {
     const slug = `quick-${crypto.randomUUID()}`;
     const result = await productsTable()
       .insert({
-        name: "منتج سريع",
+        name,
         slug,
         price_mad: price,
         image_urls: [quickImage],
@@ -625,6 +631,7 @@ function AdminProducts() {
       setError(result.error.message);
       return;
     }
+    setQuickName("");
     setQuickImage("");
     setQuickPrice("");
     setNotice(
@@ -1512,11 +1519,22 @@ function AdminProducts() {
           <div>
             <span className="admin-eyebrow">نشر سريع · 24 ساعة</span>
             <h3>إضافة منتج فوري</h3>
-            <small>ارفع الصورة وأدخل السعر فقط؛ سينشر تلقائياً لمدة 24 ساعة.</small>
+            <small>أدخل اسم المنتج والسعر وارفع صورته؛ سينشر تلقائياً لمدة 24 ساعة.</small>
           </div>
           <Timer size={20} />
         </div>
         <div className="admin-form-grid">
+          <label>
+            <span>اسم المنتج *</span>
+            <input
+              type="text"
+              required
+              maxLength={120}
+              value={quickName}
+              onChange={(event) => setQuickName(event.target.value)}
+              placeholder="مثال: خلاط Bonana PN-66"
+            />
+          </label>
           <label>
             <span>السعر (د.م) *</span>
             <input
