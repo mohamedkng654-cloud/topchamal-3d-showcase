@@ -776,22 +776,25 @@ export function Storefront() {
               ستجد ما يناسب بيتك.
             </p>
           </div>
-          <div className="category-grid">
+          <div className="category-grid" role="group" aria-label="تصفح حسب الفئة">
             {categoryList.map((c) => {
               const image = categoryImageFor(c.id, products);
               return (
                 <button
                   key={c.id}
-                  className={`category-item reveal ${active === c.id ? "active" : ""}`}
+                  type="button"
+                  className={`category-item category-compact reveal ${active === c.id ? "active" : ""}`}
                   onClick={() => choose(c.id)}
                   aria-label={`عرض ${c.label}`}
+                  aria-pressed={active === c.id}
                 >
                   <div className="category-image">
                     {image ? (
                       <img
-                        loading="eager"
+                        loading="lazy"
+                        decoding="async"
                         src={image}
-                        alt={c.label}
+                        alt=""
                         onError={(event) => {
                           if (!event.currentTarget.src.endsWith("/topchamal-logo.jpg"))
                             event.currentTarget.src = "/topchamal-logo.jpg";
@@ -801,8 +804,11 @@ export function Storefront() {
                       <span className="category-symbol">✦</span>
                     )}
                   </div>
-                  <strong>{c.label}</strong>
-                  <small>{c.fr}</small>
+                  <span className="category-copy">
+                    <strong>{c.label}</strong>
+                    <small>{c.fr}</small>
+                  </span>
+                  <ArrowLeft className="category-arrow" size={15} aria-hidden="true" />
                 </button>
               );
             })}
