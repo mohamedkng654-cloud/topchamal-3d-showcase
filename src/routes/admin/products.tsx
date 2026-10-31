@@ -3,6 +3,7 @@ import {
   Archive,
   ClipboardPaste,
   ChevronDown,
+  CopyPlus,
   Edit3,
   ImagePlus,
   PackageX,
@@ -357,6 +358,24 @@ function AdminProducts() {
     setForm(toForm(product));
     setError("");
     setNotice("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function startSizePriceOption(product: Product) {
+    setEditingId(null);
+    setForm({
+      ...toForm(product),
+      name: `${product.name} — مقاس جديد`,
+      slug: `option-${slugify(product.slug)}-${Date.now().toString(36)}`,
+      price_mad: "",
+      discount_price_mad: "",
+      stock: "0",
+      sku: "",
+      status: "draft",
+      is_featured: false,
+    });
+    setError("");
+    setNotice("تم نسخ صورة المنتج وتصنيفه. أدخل المقاس والسعر والمخزون الصحيح ثم انشر الخيار.");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -1862,6 +1881,14 @@ function AdminProducts() {
                         )}
                         <button className="admin-action edit" onClick={() => startEdit(product)}>
                           <Edit3 size={14} /> تعديل
+                        </button>
+                        <button
+                          className="admin-action edit"
+                          onClick={() => startSizePriceOption(product)}
+                          aria-label={`إضافة خيار مقاس وسعر بصورة ${product.name}`}
+                          title="إنشاء خيار جديد بصورة هذا المنتج"
+                        >
+                          <CopyPlus size={14} /> خيار مقاس/سعر
                         </button>
                         <button
                           className="admin-action stock"

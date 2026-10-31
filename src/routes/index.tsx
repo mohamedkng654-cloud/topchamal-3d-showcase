@@ -17,6 +17,7 @@ import {
   MessageCircle,
   Package,
   Play,
+  Search,
   Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,12 @@ const brandLogo = "/topchamal-logo.jpg";
 type Product = StorefrontProduct;
 type CartLine = { id: string; quantity: number };
 const isInStock = (product: Product) => typeof product.stock === "number" && product.stock > 0;
+const normalizeCategoryText = (value: string) =>
+  value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase()
+    .trim();
 function categoryImageFor(category: string, products: Product[]): string | undefined {
   const mapped = catalog.categoryImages[category as keyof typeof catalog.categoryImages];
   const productImage = products.find((product) => product.category === category)?.image;
@@ -114,6 +121,7 @@ export function Storefront() {
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [active, setActive] = useState("all");
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
   const [feature, setFeature] = useState(0);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [drawer, setDrawer] = useState(false);
@@ -375,6 +383,12 @@ export function Storefront() {
       ),
     [active, availableProducts, showAvailableOnly],
   );
+  const filteredCategories = useMemo(() => {
+    const query = normalizeCategoryText(categorySearch);
+    return categoryList.filter((category) =>
+      normalizeCategoryText(`${category.label} ${category.fr} ${category.id}`).includes(query),
+    );
+  }, [categoryList, categorySearch]);
   const featured = inStockProducts.filter((p) =>
     ["cofee-machine", "blender", "robot-cuiseur", "cocotte"].includes(p.category),
   );
@@ -776,8 +790,37 @@ export function Storefront() {
               ستجد ما يناسب بيتك.
             </p>
           </div>
+          <div className="category-tools">
+            <label className="category-search">
+              <Search size={18} aria-hidden="true" />
+              <input
+                type="search"
+                dir="rtl"
+                value={categorySearch}
+                onChange={(event) => setCategorySearch(event.target.value)}
+                placeholder="ابحث عن فئة، مثل آلات القهوة"
+                aria-label="ابحث عن فئة"
+                autoComplete="off"
+              />
+              {categorySearch && (
+                <button
+                  className="category-search-clear"
+                  type="button"
+                  onClick={() => setCategorySearch("")}
+                  aria-label="مسح البحث"
+                >
+                  <X size={15} aria-hidden="true" />
+                </button>
+              )}
+            </label>
+            {categorySearch && (
+              <span className="category-search-count" role="status">
+                {filteredCategories.length} فئة
+              </span>
+            )}
+          </div>
           <div className="category-grid" role="group" aria-label="تصفح حسب الفئة">
-            {categoryList.map((c) => {
+            {filteredCategories.map((c) => {
               const image = categoryImageFor(c.id, products);
               return (
                 <button
@@ -813,6 +856,14 @@ export function Storefront() {
               );
             })}
           </div>
+          {categorySearch && filteredCategories.length === 0 && (
+            <div className="category-search-empty" role="status">
+              <span>لا توجد فئات مطابقة للبحث.</span>
+              <Button className="btn btn-outline btn-small" onClick={() => setCategorySearch("")}>
+                عرض كل الفئات
+              </Button>
+            </div>
+          )}
         </div>
       </section>
       {inStockProducts.length > 0 && (
