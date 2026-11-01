@@ -5,4 +5,6 @@
 - [x] Unify products, categories, orders, settings, stories, and admin preferences in Lovable Cloud.
 - [x] Remove device-local administration and legacy replay; refresh all views from shared data.
 - [x] Test authenticated edits and checkout across independent browsers and check preview errors.
+- [x] Restore the missing shared-database setup (quick listings, public catalog functions, inventory-safe checkout, shared stories/private publication dates) after the backend lost it; retested full suite.
+- [x] Add product multi-select in admin: select-all, per-row checkboxes, and group actions (publish/draft/mark sold/archive, out of stock, price & stock edit, delete with ordered-product archive fallback); covered by browser tests.
 - [ ] Static export build verification — manual builds are not available in this workflow.
