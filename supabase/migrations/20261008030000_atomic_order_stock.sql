@@ -48,7 +48,7 @@ begin
 
   insert into public.orders (customer_id, customer_name, phone, email, address, city, payment_method)
   values (customer_id, customer_name, customer_phone, customer_email, customer_address, customer_city, 'cash_on_delivery')
-  returning id, order_number into order_id, order_number;
+  returning id, orders.order_number into order_id, order_number;
 
   for item in select * from jsonb_array_elements(payload->'lines') loop
     if jsonb_typeof(item) <> 'object' or coalesce(item->>'slug', '') = '' then
