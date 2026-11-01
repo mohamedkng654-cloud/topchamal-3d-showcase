@@ -205,6 +205,11 @@ function AdminProducts() {
   );
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkText, setBulkText] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkStatusValue, setBulkStatusValue] = useState<ProductStatus>("published");
+  const [bulkPriceValue, setBulkPriceValue] = useState("");
+  const [bulkStockValue, setBulkStockValue] = useState("");
+  const [bulkApplying, setBulkApplying] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [imageScanLoading, setImageScanLoading] = useState(false);
   const [quickName, setQuickName] = useState("");
@@ -1020,6 +1025,141 @@ function AdminProducts() {
       await loadData();
       if (editingId === product.id) startCreate();
     }
+  }
+
+  function toggleProductSelection(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    const allVisibleSelected =
+      filteredProducts.length > 0 && filteredProducts.every((product) => selectedIds.has(product.id));
+    setSelectedIds(
+      allVisibleSelected ? new Set() : new Set(filteredProducts.map((product) => product.id)),
+    );
+  }
+
+  async function applyBulkStatus() {
+    if (!supabaseConfigured) {
+      setError("لا يمكن تحديث المنتجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
+      return;
+    }
+    if (selectedIds.size === 0 || bulkApplying) return;
+    setBulkApplying(true);
+    setError("");
+    setNotice("");
+    const result = await productsTable()
+      .update({ status: bulkStatusValue })
+      .in("id", [...selectedIds]);
+    setBulkApplying(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setNotice(
+      bulkStatusValue === "published"
+        ? "تم نشر المنتجات المحددة."
+        : bulkStatusValue === "draft"
+          ? "تم نقل المنتجات المحددة إلى المسودة."
+          : "تم تعليم المنتجات المحددة كمبيعة ونقلها إلى الأرشيف.",
+    );
+    setSelectedIds(new Set());
+    await loadData();
+  }
+
+  async function applyBulkStock(stock: number) {
+    if (!supabaseConfigured) {
+      setError("لا يمكن تحديث المخزون بشكل مشترك حتى يتم ربط Lovable Cloud.");
+      return;
+    }
+    if (selectedIds.size === 0 || bulkApplying) return;
+    setBulkApplying(true);
+    setError("");
+    setNotice("");
+    const result = await productsTable().update({ stock }).in("id", [...selectedIds]);
+    setBulkApplying(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setNotice(
+      stock === 0 ? "تم وضع المنتجات المحددة خارج المخزون." : "تم تحديث مخزون المنتجات المحددة.",
+    );
+    setSelectedIds(new Set());
+    await loadData();
+  }
+
+  async function applyBulkEdits() {
+    if (!supabaseConfigured) {
+      setError("لا يمكن تحديث المنتجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
+      return;
+    }
+    if (selectedIds.size === 0 || bulkApplying) return;
+    const priceText = bulkPriceValue.trim();
+    const stockText = bulkStockValue.trim();
+    if (!priceText && !stockText) {
+      setError("أدخل سعراً جديداً أو مخزوناً جديداً أولاً.");
+      return;
+    }
+    const payload: Record<string, number> = {};
+    if (priceText) {
+      const price = Number(priceText);
+      if (!Number.isFinite(price) || price < 0) {
+        setError("السعر الجديد غير صالح.");
+        return;
+      }
+      payload.price_mad = price;
+    }
+    if (stockText) {
+      const stock = Number(stockText);
+      if (!Number.isInteger(stock) || stock < 0) {
+        setError("المخزون الجديد غير صالح.");
+        return;
+      }
+      payload.stock = stock;
+    }
+    setBulkApplying(true);
+    setError("");
+    setNotice("");
+    const result = await productsTable().update(payload).in("id", [...selectedIds]);
+    setBulkApplying(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setNotice("تم تحديث المنتجات المحددة.");
+    setSelectedIds(new Set());
+    setBulkPriceValue("");
+    setBulkStockValue("");
+    await loadData();
+  }
+
+  async function bulkDeleteSelected() {
+    if (!supabaseConfigured) {
+      setError("لا يمكن حذف المنتجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
+      return;
+    }
+    if (selectedIds.size === 0 || bulkApplying) return;
+    if (!window.confirm(`حذف ${selectedIds.size} منتج محدد نهائياً؟`)) return;
+    setBulkApplying(true);
+    setError("");
+    setNotice("");
+    const result = await productsTable().delete().in("id", [...selectedIds]);
+    setBulkApplying(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setNotice(
+      "تم حذف المنتجات المحددة نهائياً. سجلات الطلبات السابقة تبقى محفوظة دون ربط بمنتج الكتالوج.",
+    );
+    setSelectedIds(new Set());
+    await loadData();
   }
 
   return (
