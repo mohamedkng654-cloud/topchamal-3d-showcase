@@ -21,6 +21,7 @@ import {
   Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ProductGallery } from "@/components/ProductGallery";
 import { StorefrontProductImage } from "@/components/StorefrontProductImage";
 import catalog from "../data/products.json";
 import { categories } from "../data/categories";
@@ -895,10 +896,10 @@ export function Storefront() {
               {inStockProducts.slice(0, 4).map((product, index) => (
                 <article className="instant-card" key={product.id}>
                   <div className="instant-image">
-                    <StorefrontProductImage
-                      src={product.image}
+                    <ProductGallery
                       alt={product.name}
-                      loading="lazy"
+                      className="instant-product-gallery"
+                      images={product.images}
                       slug={product.id}
                       hasInlineImage={product.hasInlineImage}
                     />
@@ -1079,10 +1080,10 @@ export function Storefront() {
                         -{Math.round((1 - p.price / p.oldPrice) * 100)}%
                       </span>
                     )}
-                    <StorefrontProductImage
-                      src={p.image}
-                      loading="eager"
+                    <ProductGallery
                       alt={p.name}
+                      className="catalog-product-gallery"
+                      images={p.images}
                       slug={p.id}
                       hasInlineImage={p.hasInlineImage}
                     />
@@ -1287,11 +1288,13 @@ export function Storefront() {
               <X size={19} />
             </Button>
             <div className="product-preview-image">
-              <StorefrontProductImage
-                src={previewProduct.image}
+              <ProductGallery
                 alt={previewProduct.name}
+                className="preview-product-gallery"
+                images={previewProduct.images}
                 slug={previewProduct.id}
                 hasInlineImage={previewProduct.hasInlineImage}
+                eager
               />
             </div>
             <div className="product-preview-copy">

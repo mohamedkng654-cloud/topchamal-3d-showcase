@@ -53,11 +53,14 @@ let productsCache: { data: StorefrontProduct[]; updatedAt: number } | null = nul
 let productsRequest: Promise<StorefrontProduct[]> | null = null;
 let productsRequestVersion = 0;
 const productImageCache = new Map<string, Promise<string | null>>();
+const productGalleryCache = new Map<string, Promise<string[]>>();
 
 export function invalidateStorefrontProducts() {
   productsCache = null;
   productsRequestVersion += 1;
   productsRequest = null;
+  productImageCache.clear();
+  productGalleryCache.clear();
 }
 
 export async function loadStorefrontCategories(
@@ -93,9 +96,7 @@ function mapProduct(row: CatalogRow): StorefrontProduct {
     ? repairedProductImages[row.slug] || fallbackImage
     : sourceImage;
   const gallery = Array.from(
-    new Set(
-      (row.gallery_urls || []).filter((url) => url && !url.startsWith("/__l5e/assets-v1/")),
-    ),
+    new Set((row.gallery_urls || []).filter((url) => url && !url.startsWith("/__l5e/assets-v1/"))),
   ).map((url) =>
     url.startsWith("/__l5e/assets-v1/") ? repairedProductImages[row.slug] || url : url,
   );
@@ -186,6 +187,38 @@ export async function loadStorefrontProductImage(slug: string): Promise<string |
     }
   })();
   productImageCache.set(slug, request);
+  return request;
+}
+
+export async function loadStorefrontProductImages(slug: string): Promise<string[]> {
+  const cached = productGalleryCache.get(slug);
+  if (cached) return cached;
+  const request = (async () => {
+    try {
+      const { data, error } = await supabase.rpc("get_storefront_product_images", {
+        product_slug: slug,
+      });
+      if (error) throw error;
+      const urls = (data || [])
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map(({ image_url }) =>
+          image_url.startsWith("/__l5e/assets-v1/") ? repairedProductImages[slug] : image_url,
+        )
+        .filter(
+          (url): url is string =>
+            typeof url === "string" &&
+            (url.startsWith("data:image/") ||
+              (url.startsWith("/") && !url.startsWith("//")) ||
+              /^https?:\/\//i.test(url)),
+        );
+      return Array.from(new Set(urls));
+    } catch (error) {
+      productGalleryCache.delete(slug);
+      console.warn("[Storefront] Could not load product gallery", slug, error);
+      return [];
+    }
+  })();
+  productGalleryCache.set(slug, request);
   return request;
 }
 
