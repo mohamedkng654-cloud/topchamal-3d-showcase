@@ -32,6 +32,7 @@ type CatalogRow = {
   discount_price_mad: number | string | null;
   image_url: string | null;
   has_inline_image: boolean;
+  gallery_urls?: string[] | null;
   stock: number;
   is_quick_listing: boolean;
   expires_at: string | null;
@@ -91,6 +92,14 @@ function mapProduct(row: CatalogRow): StorefrontProduct {
   const image = sourceImage.startsWith("/__l5e/assets-v1/")
     ? repairedProductImages[row.slug] || fallbackImage
     : sourceImage;
+  const gallery = Array.from(
+    new Set(
+      (row.gallery_urls || []).filter((url) => url && !url.startsWith("/__l5e/assets-v1/")),
+    ),
+  ).map((url) =>
+    url.startsWith("/__l5e/assets-v1/") ? repairedProductImages[row.slug] || url : url,
+  );
+  if (gallery.length === 0 && image !== fallbackImage) gallery.push(image);
   return {
     id: row.slug,
     slug: row.slug,
@@ -100,6 +109,7 @@ function mapProduct(row: CatalogRow): StorefrontProduct {
     oldPrice,
     description: row.description || "منتج من تشكيلة Topchamal.",
     image,
+    images: gallery,
     hasInlineImage: row.has_inline_image,
     stock: row.stock,
     isQuickListing: row.is_quick_listing,
