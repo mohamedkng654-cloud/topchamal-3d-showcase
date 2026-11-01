@@ -1106,7 +1106,7 @@ function AdminProducts() {
       setError("أدخل سعراً جديداً أو مخزوناً جديداً أولاً.");
       return;
     }
-    const payload: Record<string, number> = {};
+    const payload: { price_mad?: number; stock?: number } = {};
     if (priceText) {
       const price = Number(priceText);
       if (!Number.isFinite(price) || price < 0) {
