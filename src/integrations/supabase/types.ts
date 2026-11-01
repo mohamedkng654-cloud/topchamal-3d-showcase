@@ -369,6 +369,13 @@ export type Database = {
         Args: { product_slug: string }
         Returns: string
       }
+      get_storefront_product_images: {
+        Args: { product_slug: string }
+        Returns: {
+          image_url: string
+          sort_order: number
+        }[]
+      }
       get_storefront_products: {
         Args: never
         Returns: {
@@ -376,6 +383,7 @@ export type Database = {
           description: string
           discount_price_mad: number
           expires_at: string
+          gallery_urls: string[]
           has_inline_image: boolean
           id: string
           image_url: string

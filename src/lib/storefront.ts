@@ -15,6 +15,7 @@ export type StorefrontProduct = {
   oldPrice: number | null;
   description: string;
   image: string;
+  images: string[];
   slug?: string;
   stock?: number;
   isQuickListing?: boolean;
