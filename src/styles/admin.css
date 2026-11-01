@@ -1593,3 +1593,51 @@
     transition: none;
   }
 }
+
+/* ---- bulk selection bar (products) ---- */
+.admin-bulk-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #eadfd5;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #fffaf5, #f4ece3);
+}
+.admin-bulk-bar > strong {
+  font-size: 12px;
+  color: #14213a;
+}
+.admin-bulk-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #526176;
+}
+.admin-bulk-field select,
+.admin-bulk-field input {
+  border: 1px solid #dfe4ec;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  background: #fff;
+  color: #20283a;
+  min-width: 90px;
+}
+.admin-select-cell {
+  width: 40px;
+  text-align: center !important;
+}
+.admin-select-cell input {
+  width: 16px;
+  height: 16px;
+  accent-color: #c27b42;
+  cursor: pointer;
+}
+tr.admin-row-selected td {
+  background: #fdf6ef;
+}
