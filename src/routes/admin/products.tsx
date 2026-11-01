@@ -1019,7 +1019,20 @@ function AdminProducts() {
     }
     const result = await productsTable().delete().eq("id", product.id);
     if (result.error) {
-      setError(result.error.message);
+      if (/PRODUCT_HAS_ORDERS/.test(result.error.message)) {
+        // The database blocks deleting products tied to orders; archive instead.
+        const archived = await productsTable()
+          .update({ status: "archived" })
+          .eq("id", product.id);
+        if (archived.error) {
+          setError(archived.error.message);
+        } else {
+          setNotice("هذا المنتج مرتبط بطلب؛ تمت أرشفته بدلاً من حذفه.");
+          await loadData();
+        }
+      } else {
+        setError(result.error.message);
+      }
     } else {
       setNotice("تم حذف المنتج نهائياً. سيبقى سجل الطلبات السابق محفوظاً دون ربطه بمنتج الكتالوج.");
       await loadData();
