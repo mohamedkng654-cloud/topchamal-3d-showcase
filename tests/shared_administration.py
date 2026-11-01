@@ -20,7 +20,7 @@ async def main():
    t=await r.text();return json.loads(t) if t else None
   product_id=None; order_id=None
   try:
-   form=page.locator('form').first
+   form=page.locator('form').filter(has=page.get_by_placeholder('product-slug')).first
    await page.get_by_placeholder('اسم المنتج',exact=True).fill(name);await page.get_by_placeholder('product-slug').fill(slug)
    await form.get_by_label('السعر *',exact=True).fill('125');await form.get_by_label('المخزون',exact=True).fill('4');await form.locator('label').filter(has_text='الحالة').locator('select').select_option('published');await page.get_by_placeholder('https://...',exact=True).fill('http://localhost:8080/topchamal-logo.jpg')
    await form.get_by_role('button',name='إضافة المنتج',exact=True).click()
