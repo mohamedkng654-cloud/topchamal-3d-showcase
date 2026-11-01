@@ -1162,7 +1162,38 @@ function AdminProducts() {
     setBulkApplying(true);
     setError("");
     setNotice("");
-    const result = await productsTable().delete().in("id", [...selectedIds]);
+    const ids = [...selectedIds];
+    let result = await productsTable().delete().in("id", ids);
+    if (result.error && /PRODUCT_HAS_ORDERS/.test(result.error.message)) {
+      // One ordered product blocks the batch delete; keep it archived and delete the rest.
+      const archivedIds: string[] = [];
+      const deletedIds: string[] = [];
+      for (const id of ids) {
+        const single = await productsTable().delete().eq("id", id);
+        if (single.error && /PRODUCT_HAS_ORDERS/.test(single.error.message)) {
+          const archived = await productsTable().update({ status: "archived" }).eq("id", id);
+          if (!archived.error) archivedIds.push(id);
+        } else if (!single.error) {
+          deletedIds.push(id);
+        }
+      }
+      result = {
+        error: deletedIds.length + archivedIds.length === ids.length ? null : result.error,
+      } as typeof result;
+      setBulkApplying(false);
+      if (deletedIds.length + archivedIds.length < ids.length) {
+        setError(result.error?.message || "تعذر حذف بعض المنتجات المحددة.");
+      } else {
+        setNotice(
+          archivedIds.length > 0
+            ? `تم حذف ${deletedIds.length} منتج؛ ${archivedIds.length} مرتبط بطلبات فتمت أرشفته بدلاً من حذفه.`
+            : "تم حذف المنتجات المحددة نهائياً. سجلات الطلبات السابقة تبقى محفوظة دون ربط بمنتج الكتالوج.",
+        );
+      }
+      setSelectedIds(new Set());
+      await loadData();
+      return;
+    }
     setBulkApplying(false);
     if (result.error) {
       setError(result.error.message);
