@@ -250,9 +250,11 @@ export type Database = {
           created_at: string
           description: string | null
           discount_price_mad: number | null
+          expires_at: string | null
           id: string
           image_urls: string[]
           is_featured: boolean
+          is_quick_listing: boolean
           name: string
           price_mad: number
           sku: string | null
@@ -268,9 +270,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           discount_price_mad?: number | null
+          expires_at?: string | null
           id?: string
           image_urls?: string[]
           is_featured?: boolean
+          is_quick_listing?: boolean
           name: string
           price_mad: number
           sku?: string | null
@@ -286,9 +290,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           discount_price_mad?: number | null
+          expires_at?: string | null
           id?: string
           image_urls?: string[]
           is_featured?: boolean
+          is_quick_listing?: boolean
           name?: string
           price_mad?: number
           sku?: string | null
@@ -359,6 +365,27 @@ export type Database = {
     }
     Functions: {
       create_public_order: { Args: { payload: Json }; Returns: Json }
+      get_storefront_product_image: {
+        Args: { product_slug: string }
+        Returns: string
+      }
+      get_storefront_products: {
+        Args: never
+        Returns: {
+          category_slug: string
+          description: string
+          discount_price_mad: number
+          expires_at: string
+          has_inline_image: boolean
+          id: string
+          image_url: string
+          is_quick_listing: boolean
+          name: string
+          price_mad: number
+          slug: string
+          stock: number
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
