@@ -1942,6 +1942,75 @@ function AdminProducts() {
             />
           </label>
         </div>
+        {selectedIds.size > 0 && (
+          <div className="admin-bulk-bar">
+            <strong>{selectedIds.size} منتج محدد</strong>
+            <label className="admin-bulk-field">
+              الحالة
+              <select
+                value={bulkStatusValue}
+                onChange={(event) => setBulkStatusValue(event.target.value as ProductStatus)}
+              >
+                <option value="published">نشر</option>
+                <option value="draft">مسودة</option>
+                <option value="archived">تم البيع / أرشفة</option>
+              </select>
+            </label>
+            <button
+              className="admin-action edit"
+              onClick={() => void applyBulkStatus()}
+              disabled={bulkApplying}
+            >
+              تطبيق الحالة
+            </button>
+            <button
+              className="admin-action stock"
+              onClick={() => void applyBulkStock(0)}
+              disabled={bulkApplying}
+            >
+              <PackageX size={14} /> خارج المخزون
+            </button>
+            <label className="admin-bulk-field">
+              سعر جديد
+              <input
+                value={bulkPriceValue}
+                onChange={(event) => setBulkPriceValue(event.target.value)}
+                inputMode="decimal"
+                placeholder="د.م"
+              />
+            </label>
+            <label className="admin-bulk-field">
+              مخزون
+              <input
+                value={bulkStockValue}
+                onChange={(event) => setBulkStockValue(event.target.value)}
+                inputMode="numeric"
+                placeholder="0"
+              />
+            </label>
+            <button
+              className="admin-action edit"
+              onClick={() => void applyBulkEdits()}
+              disabled={bulkApplying}
+            >
+              تحديث السعر/المخزون
+            </button>
+            <button
+              className="admin-action delete"
+              onClick={() => void bulkDeleteSelected()}
+              disabled={bulkApplying}
+            >
+              <Trash2 size={14} /> حذف المحدد
+            </button>
+            <button
+              className="admin-secondary-button"
+              onClick={() => setSelectedIds(new Set())}
+              disabled={bulkApplying}
+            >
+              إلغاء التحديد
+            </button>
+          </div>
+        )}
         {loading ? (
           <p className="admin-state">جار تحميل المنتجات...</p>
         ) : filteredProducts.length === 0 ? (
@@ -1951,6 +2020,17 @@ function AdminProducts() {
             <table className="admin-table">
               <thead>
                 <tr>
+                  <th className="admin-select-cell">
+                    <input
+                      type="checkbox"
+                      aria-label="تحديد كل المنتجات المعروضة"
+                      checked={
+                        filteredProducts.length > 0 &&
+                        filteredProducts.every((product) => selectedIds.has(product.id))
+                      }
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
                   <th>الصورة</th>
                   <th>المنتج</th>
                   <th>السعر</th>
@@ -1962,7 +2042,15 @@ function AdminProducts() {
               </thead>
               <tbody>
                 {filteredProducts.map((product) => (
-                  <tr key={product.id}>
+                  <tr key={product.id} className={selectedIds.has(product.id) ? "admin-row-selected" : ""}>
+                    <td className="admin-select-cell">
+                      <input
+                        type="checkbox"
+                        aria-label={`تحديد المنتج ${product.name}`}
+                        checked={selectedIds.has(product.id)}
+                        onChange={() => toggleProductSelection(product.id)}
+                      />
+                    </td>
                     <td className="admin-product-image-cell">
                       {product.image_urls?.[0] ? (
                         <img
