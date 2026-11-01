@@ -142,6 +142,8 @@ async function loadProductsFromPublicTable(): Promise<CatalogRow[]> {
         )
         .map((row) => {
           const firstImage = row.image_urls[0] || null;
+          const firstIsData = Boolean(firstImage?.startsWith("data:"));
+          const firstIsImage = Boolean(firstImage?.startsWith("data:image/"));
           return {
             id: row.id,
             name: row.name,
@@ -149,8 +151,9 @@ async function loadProductsFromPublicTable(): Promise<CatalogRow[]> {
             description: row.description,
             price_mad: row.price_mad,
             discount_price_mad: row.discount_price_mad,
-            image_url: firstImage?.startsWith("data:") ? null : firstImage,
-            has_inline_image: Boolean(firstImage?.startsWith("data:image/")),
+            image_url: firstIsData ? null : firstImage,
+            has_inline_image: firstIsImage,
+            gallery_urls: row.image_urls.filter((url) => url && !url.startsWith("data:")),
             stock: row.stock,
             is_quick_listing: row.is_quick_listing,
             expires_at: row.expires_at,
