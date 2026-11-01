@@ -15,6 +15,7 @@ export type StorefrontProduct = {
   oldPrice: number | null;
   description: string;
   image: string;
+  images: string[];
   slug?: string;
   stock?: number;
   isQuickListing?: boolean;
@@ -31,6 +32,7 @@ type CatalogRow = {
   discount_price_mad: number | string | null;
   image_url: string | null;
   has_inline_image: boolean;
+  gallery_urls?: string[] | null;
   stock: number;
   is_quick_listing: boolean;
   expires_at: string | null;
@@ -90,6 +92,14 @@ function mapProduct(row: CatalogRow): StorefrontProduct {
   const image = sourceImage.startsWith("/__l5e/assets-v1/")
     ? repairedProductImages[row.slug] || fallbackImage
     : sourceImage;
+  const gallery = Array.from(
+    new Set(
+      (row.gallery_urls || []).filter((url) => url && !url.startsWith("/__l5e/assets-v1/")),
+    ),
+  ).map((url) =>
+    url.startsWith("/__l5e/assets-v1/") ? repairedProductImages[row.slug] || url : url,
+  );
+  if (gallery.length === 0 && image !== fallbackImage) gallery.push(image);
   return {
     id: row.slug,
     slug: row.slug,
@@ -99,6 +109,7 @@ function mapProduct(row: CatalogRow): StorefrontProduct {
     oldPrice,
     description: row.description || "منتج من تشكيلة Topchamal.",
     image,
+    images: gallery,
     hasInlineImage: row.has_inline_image,
     stock: row.stock,
     isQuickListing: row.is_quick_listing,
@@ -131,6 +142,8 @@ async function loadProductsFromPublicTable(): Promise<CatalogRow[]> {
         )
         .map((row) => {
           const firstImage = row.image_urls[0] || null;
+          const firstIsData = Boolean(firstImage?.startsWith("data:"));
+          const firstIsImage = Boolean(firstImage?.startsWith("data:image/"));
           return {
             id: row.id,
             name: row.name,
@@ -138,8 +151,9 @@ async function loadProductsFromPublicTable(): Promise<CatalogRow[]> {
             description: row.description,
             price_mad: row.price_mad,
             discount_price_mad: row.discount_price_mad,
-            image_url: firstImage?.startsWith("data:") ? null : firstImage,
-            has_inline_image: Boolean(firstImage?.startsWith("data:image/")),
+            image_url: firstIsData ? null : firstImage,
+            has_inline_image: firstIsImage,
+            gallery_urls: row.image_urls.filter((url) => url && !url.startsWith("data:")),
             stock: row.stock,
             is_quick_listing: row.is_quick_listing,
             expires_at: row.expires_at,

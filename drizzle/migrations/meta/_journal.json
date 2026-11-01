@@ -64,6 +64,13 @@
       "when": 1792212163311,
       "tag": "0008_shared_story_records",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793508136054,
+      "tag": "0009_storefront_full_galleries",
+      "breakpoints": true
     }
   ]
 }
