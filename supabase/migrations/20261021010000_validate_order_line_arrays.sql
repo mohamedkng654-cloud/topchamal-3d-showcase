@@ -59,7 +59,7 @@ begin
     customer_city,
     'cash_on_delivery'
   )
-  returning id, order_number into order_id, order_number;
+  returning id, orders.order_number into order_id, order_number;
 
   for item in select value from jsonb_array_elements(payload->'lines') as lines(value) loop
     if jsonb_typeof(item) <> 'object' or coalesce(trim(item->>'slug'), '') = '' then

@@ -205,6 +205,11 @@ function AdminProducts() {
   );
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkText, setBulkText] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkStatusValue, setBulkStatusValue] = useState<ProductStatus>("published");
+  const [bulkPriceValue, setBulkPriceValue] = useState("");
+  const [bulkStockValue, setBulkStockValue] = useState("");
+  const [bulkApplying, setBulkApplying] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [imageScanLoading, setImageScanLoading] = useState(false);
   const [quickName, setQuickName] = useState("");
@@ -1014,12 +1019,191 @@ function AdminProducts() {
     }
     const result = await productsTable().delete().eq("id", product.id);
     if (result.error) {
-      setError(result.error.message);
+      if (/PRODUCT_HAS_ORDERS/.test(result.error.message)) {
+        // The database blocks deleting products tied to orders; archive instead.
+        const archived = await productsTable()
+          .update({ status: "archived" })
+          .eq("id", product.id);
+        if (archived.error) {
+          setError(archived.error.message);
+        } else {
+          setNotice("هذا المنتج مرتبط بطلب؛ تمت أرشفته بدلاً من حذفه.");
+          await loadData();
+        }
+      } else {
+        setError(result.error.message);
+      }
     } else {
       setNotice("تم حذف المنتج نهائياً. سيبقى سجل الطلبات السابق محفوظاً دون ربطه بمنتج الكتالوج.");
       await loadData();
       if (editingId === product.id) startCreate();
     }
+  }
+
+  function toggleProductSelection(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    const allVisibleSelected =
+      filteredProducts.length > 0 && filteredProducts.every((product) => selectedIds.has(product.id));
+    setSelectedIds(
+      allVisibleSelected ? new Set() : new Set(filteredProducts.map((product) => product.id)),
+    );
+  }
+
+  async function applyBulkStatus() {
+    if (!supabaseConfigured) {
+      setError("لا يمكن تحديث المنتجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
+      return;
+    }
+    if (selectedIds.size === 0 || bulkApplying) return;
+    setBulkApplying(true);
+    setError("");
+    setNotice("");
+    const result = await productsTable()
+      .update({ status: bulkStatusValue })
+      .in("id", [...selectedIds]);
+    setBulkApplying(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setNotice(
+      bulkStatusValue === "published"
+        ? "تم نشر المنتجات المحددة."
+        : bulkStatusValue === "draft"
+          ? "تم نقل المنتجات المحددة إلى المسودة."
+          : "تم تعليم المنتجات المحددة كمبيعة ونقلها إلى الأرشيف.",
+    );
+    setSelectedIds(new Set());
+    await loadData();
+  }
+
+  async function applyBulkStock(stock: number) {
+    if (!supabaseConfigured) {
+      setError("لا يمكن تحديث المخزون بشكل مشترك حتى يتم ربط Lovable Cloud.");
+      return;
+    }
+    if (selectedIds.size === 0 || bulkApplying) return;
+    setBulkApplying(true);
+    setError("");
+    setNotice("");
+    const result = await productsTable().update({ stock }).in("id", [...selectedIds]);
+    setBulkApplying(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setNotice(
+      stock === 0 ? "تم وضع المنتجات المحددة خارج المخزون." : "تم تحديث مخزون المنتجات المحددة.",
+    );
+    setSelectedIds(new Set());
+    await loadData();
+  }
+
+  async function applyBulkEdits() {
+    if (!supabaseConfigured) {
+      setError("لا يمكن تحديث المنتجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
+      return;
+    }
+    if (selectedIds.size === 0 || bulkApplying) return;
+    const priceText = bulkPriceValue.trim();
+    const stockText = bulkStockValue.trim();
+    if (!priceText && !stockText) {
+      setError("أدخل سعراً جديداً أو مخزوناً جديداً أولاً.");
+      return;
+    }
+    const payload: { price_mad?: number; stock?: number } = {};
+    if (priceText) {
+      const price = Number(priceText);
+      if (!Number.isFinite(price) || price < 0) {
+        setError("السعر الجديد غير صالح.");
+        return;
+      }
+      payload.price_mad = price;
+    }
+    if (stockText) {
+      const stock = Number(stockText);
+      if (!Number.isInteger(stock) || stock < 0) {
+        setError("المخزون الجديد غير صالح.");
+        return;
+      }
+      payload.stock = stock;
+    }
+    setBulkApplying(true);
+    setError("");
+    setNotice("");
+    const result = await productsTable().update(payload).in("id", [...selectedIds]);
+    setBulkApplying(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setNotice("تم تحديث المنتجات المحددة.");
+    setSelectedIds(new Set());
+    setBulkPriceValue("");
+    setBulkStockValue("");
+    await loadData();
+  }
+
+  async function bulkDeleteSelected() {
+    if (!supabaseConfigured) {
+      setError("لا يمكن حذف المنتجات بشكل مشترك حتى يتم ربط Lovable Cloud.");
+      return;
+    }
+    if (selectedIds.size === 0 || bulkApplying) return;
+    if (!window.confirm(`حذف ${selectedIds.size} منتج محدد نهائياً؟`)) return;
+    setBulkApplying(true);
+    setError("");
+    setNotice("");
+    const ids = [...selectedIds];
+    let result = await productsTable().delete().in("id", ids);
+    if (result.error && /PRODUCT_HAS_ORDERS/.test(result.error.message)) {
+      // One ordered product blocks the batch delete; keep it archived and delete the rest.
+      const archivedIds: string[] = [];
+      const deletedIds: string[] = [];
+      for (const id of ids) {
+        const single = await productsTable().delete().eq("id", id);
+        if (single.error && /PRODUCT_HAS_ORDERS/.test(single.error.message)) {
+          const archived = await productsTable().update({ status: "archived" }).eq("id", id);
+          if (!archived.error) archivedIds.push(id);
+        } else if (!single.error) {
+          deletedIds.push(id);
+        }
+      }
+      result = {
+        error: deletedIds.length + archivedIds.length === ids.length ? null : result.error,
+      } as typeof result;
+      setBulkApplying(false);
+      if (deletedIds.length + archivedIds.length < ids.length) {
+        setError(result.error?.message || "تعذر حذف بعض المنتجات المحددة.");
+      } else {
+        setNotice(
+          archivedIds.length > 0
+            ? `تم حذف ${deletedIds.length} منتج؛ ${archivedIds.length} مرتبط بطلبات فتمت أرشفته بدلاً من حذفه.`
+            : "تم حذف المنتجات المحددة نهائياً. سجلات الطلبات السابقة تبقى محفوظة دون ربط بمنتج الكتالوج.",
+        );
+      }
+      setSelectedIds(new Set());
+      await loadData();
+      return;
+    }
+    setBulkApplying(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setNotice(
+      "تم حذف المنتجات المحددة نهائياً. سجلات الطلبات السابقة تبقى محفوظة دون ربط بمنتج الكتالوج.",
+    );
+    setSelectedIds(new Set());
+    await loadData();
   }
 
   return (
@@ -1802,6 +1986,75 @@ function AdminProducts() {
             />
           </label>
         </div>
+        {selectedIds.size > 0 && (
+          <div className="admin-bulk-bar">
+            <strong>{selectedIds.size} منتج محدد</strong>
+            <label className="admin-bulk-field">
+              الحالة
+              <select
+                value={bulkStatusValue}
+                onChange={(event) => setBulkStatusValue(event.target.value as ProductStatus)}
+              >
+                <option value="published">نشر</option>
+                <option value="draft">مسودة</option>
+                <option value="archived">تم البيع / أرشفة</option>
+              </select>
+            </label>
+            <button
+              className="admin-action edit"
+              onClick={() => void applyBulkStatus()}
+              disabled={bulkApplying}
+            >
+              تطبيق الحالة
+            </button>
+            <button
+              className="admin-action stock"
+              onClick={() => void applyBulkStock(0)}
+              disabled={bulkApplying}
+            >
+              <PackageX size={14} /> خارج المخزون
+            </button>
+            <label className="admin-bulk-field">
+              سعر جديد
+              <input
+                value={bulkPriceValue}
+                onChange={(event) => setBulkPriceValue(event.target.value)}
+                inputMode="decimal"
+                placeholder="د.م"
+              />
+            </label>
+            <label className="admin-bulk-field">
+              مخزون
+              <input
+                value={bulkStockValue}
+                onChange={(event) => setBulkStockValue(event.target.value)}
+                inputMode="numeric"
+                placeholder="0"
+              />
+            </label>
+            <button
+              className="admin-action edit"
+              onClick={() => void applyBulkEdits()}
+              disabled={bulkApplying}
+            >
+              تحديث السعر/المخزون
+            </button>
+            <button
+              className="admin-action delete"
+              onClick={() => void bulkDeleteSelected()}
+              disabled={bulkApplying}
+            >
+              <Trash2 size={14} /> حذف المحدد
+            </button>
+            <button
+              className="admin-secondary-button"
+              onClick={() => setSelectedIds(new Set())}
+              disabled={bulkApplying}
+            >
+              إلغاء التحديد
+            </button>
+          </div>
+        )}
         {loading ? (
           <p className="admin-state">جار تحميل المنتجات...</p>
         ) : filteredProducts.length === 0 ? (
@@ -1811,6 +2064,17 @@ function AdminProducts() {
             <table className="admin-table">
               <thead>
                 <tr>
+                  <th className="admin-select-cell">
+                    <input
+                      type="checkbox"
+                      aria-label="تحديد كل المنتجات المعروضة"
+                      checked={
+                        filteredProducts.length > 0 &&
+                        filteredProducts.every((product) => selectedIds.has(product.id))
+                      }
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
                   <th>الصورة</th>
                   <th>المنتج</th>
                   <th>السعر</th>
@@ -1822,7 +2086,15 @@ function AdminProducts() {
               </thead>
               <tbody>
                 {filteredProducts.map((product) => (
-                  <tr key={product.id}>
+                  <tr key={product.id} className={selectedIds.has(product.id) ? "admin-row-selected" : ""}>
+                    <td className="admin-select-cell">
+                      <input
+                        type="checkbox"
+                        aria-label={`تحديد المنتج ${product.name}`}
+                        checked={selectedIds.has(product.id)}
+                        onChange={() => toggleProductSelection(product.id)}
+                      />
+                    </td>
                     <td className="admin-product-image-cell">
                       {product.image_urls?.[0] ? (
                         <img

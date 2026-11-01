@@ -20,7 +20,7 @@ async def main():
    t=await r.text();return json.loads(t) if t else None
   product_id=None; order_id=None
   try:
-   form=page.locator('form').first
+   form=page.locator('form').filter(has=page.get_by_placeholder('product-slug')).first
    await page.get_by_placeholder('اسم المنتج',exact=True).fill(name);await page.get_by_placeholder('product-slug').fill(slug)
    await form.get_by_label('السعر *',exact=True).fill('125');await form.get_by_label('المخزون',exact=True).fill('4');await form.locator('label').filter(has_text='الحالة').locator('select').select_option('published');await page.get_by_placeholder('https://...',exact=True).fill('http://localhost:8080/topchamal-logo.jpg')
    await form.get_by_role('button',name='إضافة المنتج',exact=True).click()
@@ -35,9 +35,9 @@ async def main():
    await visitor.evaluate('window.open=(url)=>{window.__whatsapp=url;return {closed:false}}')
    await visitor.get_by_role('button',name='تأكيد الطلب وفتح واتساب',exact=True).click();await visitor.wait_for_function('window.__whatsapp');url=await visitor.evaluate('window.__whatsapp');assert url.startswith('https://wa.me/212716313000?text=');orders=await api('GET','orders?customer_name=eq.Sync%20checkout%20verification');order_id=orders[-1]['id'];assert float(orders[-1]['total_mad'])==175;print('PASS checkout saves shared order before direct WhatsApp chat')
    await page.reload(); row=page.get_by_role('row').filter(has_text=slug);await row.get_by_role('button',name='تعديل',exact=True).click();await form.locator('label').filter(has_text='الحالة').locator('select').select_option('draft');await form.get_by_role('button',name='حفظ التعديلات',exact=True).click();await page.wait_for_timeout(700);await visitor.goto('http://localhost:8080');await visitor.wait_for_timeout(2500);assert await visitor.get_by_role('button',name='أضف '+name+' إلى السلة',exact=True).count()==0;print('PASS unpublished product disappears')
-   page.once('dialog',lambda d:d.accept());await row.get_by_role('button',name='حذف',exact=True).click();await page.get_by_text('هذا المنتج مرتبط بطلب؛ تمت أرشفته بدلاً من حذفه.',exact=True).wait_for();assert (await api('GET','products?id=eq.'+product_id))[0]['status']=='archived';print('PASS ordered product archived instead of deleted')
+   page.once('dialog',lambda d:asyncio.ensure_future(d.accept()));await row.get_by_role('button',name='حذف',exact=True).click();await page.get_by_text('هذا المنتج مرتبط بطلب؛ تمت أرشفته بدلاً من حذفه.',exact=True).wait_for();assert (await api('GET','products?id=eq.'+product_id))[0]['status']=='archived';print('PASS ordered product archived instead of deleted')
    await api('DELETE','orders?id=eq.'+order_id);order_id=None
-   await page.reload();row=page.get_by_role('row').filter(has_text=slug);page.once('dialog',lambda d:d.accept());await row.get_by_role('button',name='حذف',exact=True).click();await row.wait_for(state='detached');assert await api('GET','products?id=eq.'+product_id)==[];product_id=None;print('PASS UI delete removed product')
+   await page.reload();row=page.get_by_role('row').filter(has_text=slug);page.once('dialog',lambda d:asyncio.ensure_future(d.accept()));await row.get_by_role('button',name='حذف',exact=True).click();await row.wait_for(state='detached');assert await api('GET','products?id=eq.'+product_id)==[];product_id=None;print('PASS UI delete removed product')
   finally:
    if order_id:await api('DELETE','orders?id=eq.'+order_id)
    if product_id:await api('DELETE','products?id=eq.'+product_id)
