@@ -4,15 +4,12 @@
 // Recover by reloading once so the browser picks up fresh module URLs.
 const RELOAD_FLAG = "topchamal-import-recovery";
 
-const FAILED_IMPORT = /failed to fetch dynamically imported module|importing a module script failed|error loading dynamically imported module/i;
+const FAILED_IMPORT =
+  /failed to fetch dynamically imported module|importing a module script failed|error loading dynamically imported module/i;
 
 function isFailedImport(reason: unknown): boolean {
   const message =
-    reason instanceof Error
-      ? reason.message
-      : typeof reason === "string"
-        ? reason
-        : "";
+    reason instanceof Error ? reason.message : typeof reason === "string" ? reason : "";
   return FAILED_IMPORT.test(message);
 }
 

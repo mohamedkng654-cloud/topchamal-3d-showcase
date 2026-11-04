@@ -1021,9 +1021,7 @@ function AdminProducts() {
     if (result.error) {
       if (/PRODUCT_HAS_ORDERS/.test(result.error.message)) {
         // The database blocks deleting products tied to orders; archive instead.
-        const archived = await productsTable()
-          .update({ status: "archived" })
-          .eq("id", product.id);
+        const archived = await productsTable().update({ status: "archived" }).eq("id", product.id);
         if (archived.error) {
           setError(archived.error.message);
         } else {
@@ -1051,7 +1049,8 @@ function AdminProducts() {
 
   function toggleSelectAll() {
     const allVisibleSelected =
-      filteredProducts.length > 0 && filteredProducts.every((product) => selectedIds.has(product.id));
+      filteredProducts.length > 0 &&
+      filteredProducts.every((product) => selectedIds.has(product.id));
     setSelectedIds(
       allVisibleSelected ? new Set() : new Set(filteredProducts.map((product) => product.id)),
     );
@@ -1094,7 +1093,9 @@ function AdminProducts() {
     setBulkApplying(true);
     setError("");
     setNotice("");
-    const result = await productsTable().update({ stock }).in("id", [...selectedIds]);
+    const result = await productsTable()
+      .update({ stock })
+      .in("id", [...selectedIds]);
     setBulkApplying(false);
     if (result.error) {
       setError(result.error.message);
@@ -1139,7 +1140,9 @@ function AdminProducts() {
     setBulkApplying(true);
     setError("");
     setNotice("");
-    const result = await productsTable().update(payload).in("id", [...selectedIds]);
+    const result = await productsTable()
+      .update(payload)
+      .in("id", [...selectedIds]);
     setBulkApplying(false);
     if (result.error) {
       setError(result.error.message);
@@ -2086,7 +2089,10 @@ function AdminProducts() {
               </thead>
               <tbody>
                 {filteredProducts.map((product) => (
-                  <tr key={product.id} className={selectedIds.has(product.id) ? "admin-row-selected" : ""}>
+                  <tr
+                    key={product.id}
+                    className={selectedIds.has(product.id) ? "admin-row-selected" : ""}
+                  >
                     <td className="admin-select-cell">
                       <input
                         type="checkbox"
