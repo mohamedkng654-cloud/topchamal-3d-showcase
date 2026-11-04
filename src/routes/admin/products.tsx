@@ -927,6 +927,7 @@ function AdminProducts() {
       (row) =>
         (row.price.trim() && (!Number.isFinite(Number(row.price)) || Number(row.price) < 0)) ||
         !Number.isFinite(Number(row.stock || 0)) ||
+        !Number.isInteger(Number(row.stock || 0)) ||
         Number(row.stock || 0) < 0,
     );
     if (invalidRow) {

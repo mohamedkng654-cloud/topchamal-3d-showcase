@@ -52,6 +52,7 @@ const normalizeCategoryText = (value: string) =>
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase()
+    .replace(/\s+/g, " ")
     .trim();
 function categoryImageFor(category: string, products: Product[]): string | undefined {
   const mapped = catalog.categoryImages[category as keyof typeof catalog.categoryImages];
@@ -116,7 +117,9 @@ export function Storefront() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categoryList, setCategoryList] = useState<StorefrontCategory[]>(staticCategories);
   const [scrolled, setScrolled] = useState(false);
-  const [catalogError, setCatalogError] = useState("");
+  const [productError, setProductError] = useState("");
+  const [categoryError, setCategoryError] = useState("");
+  const [contentError, setContentError] = useState("");
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [orderError, setOrderError] = useState("");
   const [orderSubmitting, setOrderSubmitting] = useState(false);
@@ -148,10 +151,10 @@ export function Storefront() {
         .then((rows) => {
           if (!isActive || requestId !== productRequestId) return;
           setProducts(rows);
-          setCatalogError("");
+          setProductError("");
         })
         .catch((error) => {
-          if (isActive && requestId === productRequestId) setCatalogError(error.message);
+          if (isActive && requestId === productRequestId) setProductError(error.message);
         })
         .finally(() => {
           if (isActive && requestId === productRequestId) setCatalogLoading(false);
@@ -161,10 +164,13 @@ export function Storefront() {
       const requestId = ++categoryRequestId;
       void loadStorefrontCategories(staticCategories)
         .then((rows) => {
-          if (isActive && requestId === categoryRequestId) setCategoryList(rows);
+          if (isActive && requestId === categoryRequestId) {
+            setCategoryList(rows);
+            setCategoryError("");
+          }
         })
         .catch((error) => {
-          if (isActive && requestId === categoryRequestId) setCatalogError(error.message);
+          if (isActive && requestId === categoryRequestId) setCategoryError(error.message);
         });
     };
     refreshProducts();
@@ -186,8 +192,9 @@ export function Storefront() {
       .then(() => {
         setStories(getActiveLocalStories());
         setSiteSettings(getLocalSiteSettings());
+        setContentError("");
       })
-      .catch(() => setCatalogError("تعذر تحميل محتوى المتجر."));
+      .catch(() => setContentError("تعذر تحميل محتوى المتجر."));
     window.addEventListener("focus", refreshProducts);
     const unsubscribeCatalog = subscribeToStorefrontCatalog(() => {
       refreshProducts();
@@ -213,7 +220,7 @@ export function Storefront() {
     if (loaded) localStorage.setItem("topchamal-cart", JSON.stringify(cart));
   }, [cart, loaded]);
   useEffect(() => {
-    if (catalogLoading || catalogError) return;
+    if (catalogLoading || productError) return;
     setCart((current) =>
       current
         .map((line) => {
@@ -230,7 +237,7 @@ export function Storefront() {
         })
         .filter((line): line is CartLine => Boolean(line && line.quantity > 0)),
     );
-  }, [products, catalogLoading, catalogError, now]);
+  }, [products, catalogLoading, productError, now]);
   useEffect(() => {
     if (storyViewerIndex === null) return;
     document.body.style.overflow = "hidden";
@@ -471,9 +478,7 @@ export function Storefront() {
     const lines = cart
       .map((line) => {
         const product = products.find((item) => item.id === line.id);
-        return product
-          ? `• ${product.name} × ${line.quantity} — ${formatPrice(product.price * line.quantity)} د.م`
-          : "";
+        return product ? `• ${product.name} × ${line.quantity}` : "";
       })
       .filter(Boolean);
     let orderNumber: string;
@@ -820,6 +825,11 @@ export function Storefront() {
               </span>
             )}
           </div>
+          {categoryError && (
+            <p className="fine" role="alert">
+              {categoryError}
+            </p>
+          )}
           <div className="category-grid" role="group" aria-label="تصفح حسب الفئة">
             {filteredCategories.map((c) => {
               const image = categoryImageFor(c.id, products);
@@ -991,7 +1001,8 @@ export function Storefront() {
         </section>
       )}
       <section className="section product-section" id="products" ref={productRef}>
-        {catalogError && <p role="alert">{catalogError}</p>}
+        {contentError && <p role="alert">{contentError}</p>}
+        {productError && <p role="alert">{productError}</p>}
         {catalogLoading && <p role="status">جارٍ تحميل المنتجات…</p>}
         <div className="wrap">
           <div className="section-top reveal">
@@ -1037,7 +1048,8 @@ export function Storefront() {
               </Button>
             ))}
           </div>
-          {filtered.length ? (
+          {catalogLoading ||
+          (productError !== "" && products.length === 0) ? null : filtered.length ? (
             <div className="product-grid">
               {filtered.map((p) => (
                 <article
@@ -1120,7 +1132,13 @@ export function Storefront() {
                   ? "لا توجد منتجات متوفرة حالياً. تحقق مرة أخرى قريباً."
                   : "لا توجد منتجات في هذا التصنيف حالياً."}
               </p>
-              <Button className="btn btn-outline" onClick={() => setActive("all")}>
+              <Button
+                className="btn btn-outline"
+                onClick={() => {
+                  setActive("all");
+                  setShowAvailableOnly(false);
+                }}
+              >
                 عرض جميع المنتجات
               </Button>
             </div>
@@ -1238,7 +1256,11 @@ export function Storefront() {
               <h4>المساعدة</h4>
               <a href="#faq">الأسئلة الشائعة</a>
               <a href="#about">التوصيل والدفع</a>
-              <a href="https://topchamal.ma/pages/contact-us" target="_blank" rel="noreferrer">
+              <a
+                href={whatsappNumber ? `https://wa.me/${whatsappNumber}` : "#faq"}
+                target={whatsappNumber ? "_blank" : undefined}
+                rel={whatsappNumber ? "noreferrer" : undefined}
+              >
                 التواصل مع المتجر
               </a>
             </div>
